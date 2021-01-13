@@ -136,4 +136,7 @@ public:
     [[nodiscard]] std::vector<PolygonCache> polygons(bool update_invalid = false) const;
 };
 
+/// @note Uses the same seed every time.
+std::shared_ptr<world::Cube> create_random_world(int max_deep);
+
 } // namespace inexor::vulkan_renderer::world

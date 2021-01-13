@@ -56,8 +56,7 @@ void CommandBuffer::bind_graphics_pipeline(VkPipeline pipeline) const {
 }
 
 void CommandBuffer::bind_index_buffer(VkBuffer buffer) const {
-    // TODO: Don't hardcode 16 for index bit width here.
-    vkCmdBindIndexBuffer(m_command_buffer, buffer, 0, VK_INDEX_TYPE_UINT16);
+    vkCmdBindIndexBuffer(m_command_buffer, buffer, 0, VK_INDEX_TYPE_UINT32);
 }
 
 void CommandBuffer::bind_vertex_buffers(const std::vector<VkBuffer> &buffers) const {
@@ -67,6 +66,7 @@ void CommandBuffer::bind_vertex_buffers(const std::vector<VkBuffer> &buffers) co
 }
 
 void CommandBuffer::draw(std::size_t vertex_count) const {
+    // TODO: Don't hardcode index bit width here.
     vkCmdDraw(m_command_buffer, static_cast<std::uint32_t>(vertex_count), 1, 0, 0);
 }
 

@@ -15,6 +15,7 @@
 #include <spdlog/spdlog.h>
 #include <toml11/toml.hpp>
 
+#include <random>
 #include <thread>
 
 namespace inexor::vulkan_renderer {
@@ -194,8 +195,9 @@ void Application::load_shaders() {
 void Application::load_octree_geometry() {
     spdlog::debug("Creating octree geometry.");
 
-    std::shared_ptr<world::Cube> cube =
-        std::make_shared<world::Cube>(world::Cube::Type::OCTANT, 2.0f, glm::vec3{0, -1, -1});
+    // 4: 23 012 | 5: 184352 | 6: 1474162 | 7: 11792978 cubes, DO NOT USE 7!
+    std::shared_ptr<world::Cube> cube = world::create_random_world(6);
+    spdlog::debug("Created {} geometry cubes.", cube->count_geometry_cubes());
 
     cube->childs()[3]->set_type(world::Cube::Type::EMPTY);
     cube->childs()[5]->set_type(world::Cube::Type::EMPTY);
