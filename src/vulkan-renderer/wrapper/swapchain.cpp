@@ -96,12 +96,12 @@ void Swapchain::setup_swapchain(const VkSwapchainKHR old_swapchain, std::uint32_
     swapchain_ci.compositeAlpha = composite_alpha.value();
 
     // Set additional usage flag for blitting from the swapchain images if supported.
-    VkFormatProperties formatProps;
+    VkFormatProperties format_properties;
 
-    vkGetPhysicalDeviceFormatProperties(m_device.physical_device(), m_surface_format.format, &formatProps);
+    vkGetPhysicalDeviceFormatProperties(m_device.physical_device(), m_surface_format.format, &format_properties);
 
-    if (static_cast<bool>(formatProps.optimalTilingFeatures & VK_FORMAT_FEATURE_TRANSFER_SRC_BIT_KHR) ||
-        static_cast<bool>(formatProps.optimalTilingFeatures & VK_FORMAT_FEATURE_BLIT_SRC_BIT)) {
+    if (static_cast<bool>(format_properties.optimalTilingFeatures & VK_FORMAT_FEATURE_TRANSFER_SRC_BIT_KHR) ||
+        static_cast<bool>(format_properties.optimalTilingFeatures & VK_FORMAT_FEATURE_BLIT_SRC_BIT)) {
         swapchain_ci.imageUsage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
     }
 
