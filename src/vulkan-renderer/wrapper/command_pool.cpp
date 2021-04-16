@@ -23,8 +23,9 @@ CommandPool::CommandPool(const Device &device, const std::uint32_t queue_family_
     spdlog::debug("Created command pool successfully.");
 }
 
-CommandPool::CommandPool(CommandPool &&other) noexcept
-    : m_device(other.m_device), m_command_pool(std::exchange(other.m_command_pool, nullptr)) {}
+CommandPool::CommandPool(CommandPool &&other) noexcept : m_device(other.m_device) {
+    m_command_pool = std::exchange(other.m_command_pool, nullptr);
+}
 
 CommandPool::~CommandPool() {
     if (m_command_pool != nullptr) {
