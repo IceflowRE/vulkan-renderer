@@ -97,7 +97,7 @@ public:
     /// Get child.
     std::shared_ptr<Cube> operator[](std::size_t idx);
     /// Get child.
-    const std::shared_ptr<const Cube> operator[](std::size_t idx) const;
+    const Cube &operator[](std::size_t idx) const;
 
     /// Is the current cube root.
     [[nodiscard]] bool is_root() const noexcept;
