@@ -214,7 +214,7 @@ jobs:
       - name: Upload release artifact
         uses: actions/upload-artifact@v3
         with:
-          name: windows_amd64_${{ matrix.config.compiler}.zip
+          name: windows_amd64_${{ matrix.config.compiler }}.zip
           path: windows_amd64_${{ matrix.config.compiler }}.zip
           retention-days: 7
 
