@@ -1,8 +1,12 @@
 name: Publish
 on:
   workflow_run:
-    workflows: [ "Build", "Build Documentation"]
-    branches: [main, iceflower/rolling-fox]
+    workflows:
+      - Build
+      - Build Documentation
+    branches:
+      - main
+      - iceflower/rolling-fox
     types:
       - completed
 

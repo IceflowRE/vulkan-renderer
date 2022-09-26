@@ -199,8 +199,8 @@ jobs:
       - name: Upload build artifact
         uses: actions/upload-artifact@v3
         with:
-          name: build_windows_${{ matrix.config.cc }}.tar.xz
-          path: build_windows_${{ matrix.config.cc }}.tar.xz
+          name: build_windows_${{ matrix.config.compiler }}.zip
+          path: build_windows_${{ matrix.config.compiler }}.zip
 
       - name: Prepare release artifact
         shell: bash
