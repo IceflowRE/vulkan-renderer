@@ -12,19 +12,76 @@
 namespace inexor::vulkan_renderer::wrapper::pipelines {
 
 GraphicsPipeline::GraphicsPipeline(const Device &device, const PipelineCache &pipeline_cache,
-                                   std::span<const VkDescriptorSetLayout> descriptor_set_layouts,
-                                   std::span<const VkPushConstantRange> push_constant_ranges,
-                                   VkGraphicsPipelineCreateInfo pipeline_ci, std::string name)
+                                   GraphicsPipelineSetupData pipeline_setup_data, bool use_dynamic_rendering,
+                                   std::string name)
     : m_device(device), m_name(std::move(name)) {
 
-    // @TODO Should the pipeline layout really be part of graphics pipeline wrapper?
+    // NOTE: It's important to fill VkGraphicsPipelineCreateInfo in the constructor of GraphicsPipeline!
 
-    // Create the graphics pipeline layout
-    m_pipeline_layout = std::make_unique<PipelineLayout>(m_device, m_name, std::move(descriptor_set_layouts),
-                                                         std::move(push_constant_ranges));
+    if (use_dynamic_rendering) {
+        pipeline_setup_data.pipeline_rendering_ci = make_info<VkPipelineRenderingCreateInfo>({
+            // TODO: Support multiview rendering and expose viewMask parameter
+            .colorAttachmentCount = static_cast<std::uint32_t>(pipeline_setup_data.color_attachments.size()),
+            .pColorAttachmentFormats = pipeline_setup_data.color_attachments.data(),
+            .depthAttachmentFormat = pipeline_setup_data.depth_attachment_format,
+            .stencilAttachmentFormat = pipeline_setup_data.stencil_attachment_format,
+        });
+    }
 
-    // Set the pipeline layout in the pipeline create info struct
-    pipeline_ci.layout = m_pipeline_layout->m_pipeline_layout;
+    pipeline_setup_data.vertex_input_sci = make_info<VkPipelineVertexInputStateCreateInfo>({
+        .vertexBindingDescriptionCount =
+            static_cast<std::uint32_t>(pipeline_setup_data.vertex_input_binding_descriptions.size()),
+        .pVertexBindingDescriptions = pipeline_setup_data.vertex_input_binding_descriptions.data(),
+        .vertexAttributeDescriptionCount =
+            static_cast<std::uint32_t>(pipeline_setup_data.vertex_input_attribute_descriptions.size()),
+        .pVertexAttributeDescriptions = pipeline_setup_data.vertex_input_attribute_descriptions.data(),
+
+    });
+
+    pipeline_setup_data.viewport_sci = make_info<VkPipelineViewportStateCreateInfo>({
+        .viewportCount = static_cast<uint32_t>(pipeline_setup_data.viewports.size()),
+        .pViewports = pipeline_setup_data.viewports.data(),
+        .scissorCount = static_cast<uint32_t>(pipeline_setup_data.scissors.size()),
+        .pScissors = pipeline_setup_data.scissors.data(),
+    });
+
+    pipeline_setup_data.color_blend_sci = wrapper::make_info<VkPipelineColorBlendStateCreateInfo>({
+        .attachmentCount = static_cast<std::uint32_t>(pipeline_setup_data.color_blend_attachment_states.size()),
+        .pAttachments = pipeline_setup_data.color_blend_attachment_states.data(),
+    });
+
+    pipeline_setup_data.dynamic_states_sci = make_info<VkPipelineDynamicStateCreateInfo>({
+        .dynamicStateCount = static_cast<std::uint32_t>(pipeline_setup_data.dynamic_states.size()),
+        .pDynamicStates = pipeline_setup_data.dynamic_states.data(),
+    });
+
+    // @TODO Remove 'use_dynamic_rendering' parameter once we move away from renderpasses!
+    auto pipeline_ci = make_info<VkGraphicsPipelineCreateInfo>({
+        // NOTE: This is one of those rare cases where pNext is actually not nullptr!
+        .pNext = (use_dynamic_rendering) ? &pipeline_ci_data.pipeline_rendering_ci : nullptr,
+        .stageCount = static_cast<std::uint32_t>(pipeline_ci_data.shader_stages.size()),
+        .pStages = pipeline_ci_data.shader_stages.data(),
+        .pVertexInputState = &pipeline_ci_data.vertex_input_sci,
+        .pInputAssemblyState = &pipeline_ci_data.input_assembly_sci,
+        .pTessellationState = &pipeline_ci_data.tesselation_sci,
+        .pViewportState = &pipeline_ci_data.viewport_sci,
+        .pRasterizationState = &pipeline_ci_data.rasterization_sci,
+        .pMultisampleState = &pipeline_ci_data.multisample_sci,
+        .pDepthStencilState = &pipeline_ci_data.depth_stencil_sci,
+        .pColorBlendState = &pipeline_ci_data.color_blend_sci,
+        .pDynamicState = &pipeline_ci_data.dynamic_states_sci,
+        .layout = pipeline_ci_data.pipeline_layout,
+        // @TODO Make this VK_NULL_HANDLE and use dynamic rendering!
+        .renderPass = (use_dynamic_rendering) ? VK_NULL_HANDLE : pipeline_ci_data.render_pass,
+    });
+
+    // @TODO Expose the pipeline layout as parameter
+    m_pipeline_layout = std::make_unique<PipelineLayout>(m_device, m_name, pipeline_setup_data.descriptor_set_layouts,
+                                                         pipeline_setup_data.push_constant_ranges);
+
+    const auto pipeline_ci = make_info<VkGraphicsPipelineCreateInfo>({
+        .layout = m_pipeline_layout->pipeline_layout(),
+    });
 
     if (const auto result = vkCreateGraphicsPipelines(m_device.device(), pipeline_cache.m_pipeline_cache, 1,
                                                       &pipeline_ci, nullptr, &m_pipeline);
@@ -35,10 +92,7 @@ GraphicsPipeline::GraphicsPipeline(const Device &device, const PipelineCache &pi
 }
 
 GraphicsPipeline::GraphicsPipeline(GraphicsPipeline &&other) noexcept : m_device(other.m_device) {
-    // TODO: Check me!
-    m_pipeline = std::exchange(other.m_pipeline, VK_NULL_HANDLE);
-    m_pipeline_layout = std::exchange(other.m_pipeline_layout, nullptr);
-    m_name = std::move(other.m_name);
+    // TODO: Implement me!
 }
 
 GraphicsPipeline::~GraphicsPipeline() {
