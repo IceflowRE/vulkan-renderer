@@ -1,5 +1,7 @@
 #pragma once
 
+#include "inexor/vulkan-renderer/wrapper/make_info.hpp"
+
 #include <volk.h>
 
 #include <memory>
@@ -61,17 +63,22 @@ struct GraphicsPipelineSetupData {
     std::vector<VkDynamicState> dynamic_states{};
     VkPipelineLayout pipeline_layout{VK_NULL_HANDLE};
 
+    // @TODO: Can we make this more pretty?
+
     // These are the create info structures required to fill the VkGraphicsPipelineCreateInfo
-    VkPipelineVertexInputStateCreateInfo vertex_input_sci{};
-    VkPipelineInputAssemblyStateCreateInfo input_assembly_sci{};
-    VkPipelineTessellationStateCreateInfo tesselation_sci{};
-    VkPipelineViewportStateCreateInfo viewport_sci{};
-    VkPipelineRasterizationStateCreateInfo rasterization_sci{};
-    VkPipelineDepthStencilStateCreateInfo depth_stencil_sci{};
-    VkPipelineRenderingCreateInfo pipeline_rendering_ci{};
-    VkPipelineMultisampleStateCreateInfo multisample_sci{};
-    VkPipelineColorBlendStateCreateInfo color_blend_sci{};
-    VkPipelineDynamicStateCreateInfo dynamic_states_sci{};
+    VkPipelineVertexInputStateCreateInfo vertex_input_sci{wrapper::make_info<VkPipelineVertexInputStateCreateInfo>()};
+    VkPipelineInputAssemblyStateCreateInfo input_assembly_sci{
+        wrapper::make_info<VkPipelineInputAssemblyStateCreateInfo>()};
+    VkPipelineTessellationStateCreateInfo tesselation_sci{wrapper::make_info<VkPipelineTessellationStateCreateInfo>()};
+    VkPipelineViewportStateCreateInfo viewport_sci{wrapper::make_info<VkPipelineViewportStateCreateInfo>()};
+    VkPipelineRasterizationStateCreateInfo rasterization_sci{
+        wrapper::make_info<VkPipelineRasterizationStateCreateInfo>()};
+    VkPipelineDepthStencilStateCreateInfo depth_stencil_sci{
+        wrapper::make_info<VkPipelineDepthStencilStateCreateInfo>()};
+    VkPipelineRenderingCreateInfo pipeline_rendering_ci{wrapper::make_info<VkPipelineRenderingCreateInfo>()};
+    VkPipelineMultisampleStateCreateInfo multisample_sci{wrapper::make_info<VkPipelineMultisampleStateCreateInfo>()};
+    VkPipelineColorBlendStateCreateInfo color_blend_sci{wrapper::make_info<VkPipelineColorBlendStateCreateInfo>()};
+    VkPipelineDynamicStateCreateInfo dynamic_states_sci{wrapper::make_info<VkPipelineDynamicStateCreateInfo>()};
 };
 
 /// RAII wrapper for graphics pipelines

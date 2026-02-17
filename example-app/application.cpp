@@ -626,6 +626,16 @@ void ExampleApp::setup_render_graph() {
                                          .offset = offsetof(OctreeVertex, color),
                                      },
                                  })
+                                 .set_input_assembly(wrapper::make_info<VkPipelineInputAssemblyStateCreateInfo>({
+                                     .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+                                     .primitiveRestartEnable = VK_FALSE,
+                                 }))
+                                 .set_rasterization(wrapper::make_info<VkPipelineRasterizationStateCreateInfo>({
+                                     .polygonMode = VK_POLYGON_MODE_FILL,
+                                     .cullMode = VK_CULL_MODE_BACK_BIT,
+                                     .frontFace = VK_FRONT_FACE_CLOCKWISE,
+                                     .lineWidth = 1.0f,
+                                 }))
                                  .set_multisampling(VK_SAMPLE_COUNT_1_BIT)
                                  .add_default_color_blend_attachment()
                                  .set_depth_attachment_format(m_depth_buffer2.lock()->format())

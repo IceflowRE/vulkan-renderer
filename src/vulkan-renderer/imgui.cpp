@@ -150,6 +150,18 @@ ImGUIOverlay::ImGUIOverlay(const wrapper::Device &device, const wrapper::Swapcha
                                         .offset = offsetof(ImDrawVert, col),
                                     },
                                 })
+                                // @TODO: use_default_rasterization()? Maybe make implicitely default
+                                .set_rasterization(wrapper::make_info<VkPipelineRasterizationStateCreateInfo>({
+                                    .polygonMode = VK_POLYGON_MODE_FILL,
+                                    .cullMode = VK_CULL_MODE_BACK_BIT,
+                                    .frontFace = VK_FRONT_FACE_CLOCKWISE,
+                                    .lineWidth = 1.0f,
+                                }))
+                                .set_input_assembly(wrapper::make_info<VkPipelineInputAssemblyStateCreateInfo>({
+                                    .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+                                    .primitiveRestartEnable = VK_FALSE,
+                                }))
+                                .set_multisampling(VK_SAMPLE_COUNT_1_BIT, 1.0f)
                                 .add_default_color_blend_attachment()
                                 .add_color_attachment_format(m_swapchain.image_format())
                                 .set_dynamic_states({

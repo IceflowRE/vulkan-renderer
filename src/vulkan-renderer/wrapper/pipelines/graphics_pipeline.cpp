@@ -3,7 +3,6 @@
 #include "inexor/vulkan-renderer/render_graph.hpp"
 #include "inexor/vulkan-renderer/tools/exception.hpp"
 #include "inexor/vulkan-renderer/wrapper/device.hpp"
-#include "inexor/vulkan-renderer/wrapper/make_info.hpp"
 #include "inexor/vulkan-renderer/wrapper/pipelines/pipeline_cache.hpp"
 #include "inexor/vulkan-renderer/wrapper/pipelines/pipeline_layout.hpp"
 
@@ -55,32 +54,28 @@ GraphicsPipeline::GraphicsPipeline(const Device &device, const PipelineCache &pi
         .pDynamicStates = pipeline_setup_data.dynamic_states.data(),
     });
 
-    // @TODO Remove 'use_dynamic_rendering' parameter once we move away from renderpasses!
-    auto pipeline_ci = make_info<VkGraphicsPipelineCreateInfo>({
-        // NOTE: This is one of those rare cases where pNext is actually not nullptr!
-        .pNext = (use_dynamic_rendering) ? &pipeline_ci_data.pipeline_rendering_ci : nullptr,
-        .stageCount = static_cast<std::uint32_t>(pipeline_ci_data.shader_stages.size()),
-        .pStages = pipeline_ci_data.shader_stages.data(),
-        .pVertexInputState = &pipeline_ci_data.vertex_input_sci,
-        .pInputAssemblyState = &pipeline_ci_data.input_assembly_sci,
-        .pTessellationState = &pipeline_ci_data.tesselation_sci,
-        .pViewportState = &pipeline_ci_data.viewport_sci,
-        .pRasterizationState = &pipeline_ci_data.rasterization_sci,
-        .pMultisampleState = &pipeline_ci_data.multisample_sci,
-        .pDepthStencilState = &pipeline_ci_data.depth_stencil_sci,
-        .pColorBlendState = &pipeline_ci_data.color_blend_sci,
-        .pDynamicState = &pipeline_ci_data.dynamic_states_sci,
-        .layout = pipeline_ci_data.pipeline_layout,
-        // @TODO Make this VK_NULL_HANDLE and use dynamic rendering!
-        .renderPass = (use_dynamic_rendering) ? VK_NULL_HANDLE : pipeline_ci_data.render_pass,
-    });
-
     // @TODO Expose the pipeline layout as parameter
     m_pipeline_layout = std::make_unique<PipelineLayout>(m_device, m_name, pipeline_setup_data.descriptor_set_layouts,
                                                          pipeline_setup_data.push_constant_ranges);
 
-    const auto pipeline_ci = make_info<VkGraphicsPipelineCreateInfo>({
+    // @TODO Remove 'use_dynamic_rendering' parameter once we move away from renderpasses!
+    auto pipeline_ci = make_info<VkGraphicsPipelineCreateInfo>({
+        // NOTE: This is one of those rare cases where pNext is actually not nullptr!
+        .pNext = (use_dynamic_rendering) ? &pipeline_setup_data.pipeline_rendering_ci : nullptr,
+        .stageCount = static_cast<std::uint32_t>(pipeline_setup_data.shader_stages.size()),
+        .pStages = pipeline_setup_data.shader_stages.data(),
+        .pVertexInputState = &pipeline_setup_data.vertex_input_sci,
+        .pInputAssemblyState = &pipeline_setup_data.input_assembly_sci,
+        .pTessellationState = &pipeline_setup_data.tesselation_sci,
+        .pViewportState = &pipeline_setup_data.viewport_sci,
+        .pRasterizationState = &pipeline_setup_data.rasterization_sci,
+        .pMultisampleState = &pipeline_setup_data.multisample_sci,
+        .pDepthStencilState = &pipeline_setup_data.depth_stencil_sci,
+        .pColorBlendState = &pipeline_setup_data.color_blend_sci,
+        .pDynamicState = &pipeline_setup_data.dynamic_states_sci,
         .layout = m_pipeline_layout->pipeline_layout(),
+        // @TODO Make this VK_NULL_HANDLE and use dynamic rendering!
+        .renderPass = (use_dynamic_rendering) ? VK_NULL_HANDLE : pipeline_setup_data.render_pass,
     });
 
     if (const auto result = vkCreateGraphicsPipelines(m_device.device(), pipeline_cache.m_pipeline_cache, 1,

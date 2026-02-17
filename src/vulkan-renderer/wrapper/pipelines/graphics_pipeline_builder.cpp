@@ -27,8 +27,10 @@ std::shared_ptr<GraphicsPipeline> GraphicsPipelineBuilder::build(std::string nam
     // to build the graphics pipeline. This is because validation of this data is job of the validation layers, and not
     // the job of GraphicsPipelineBuilder. We should not mimic the behavious of validation layers here.
 
-    auto graphics_pipeline = std::make_shared<GraphicsPipeline>(m_device, m_pipeline_cache, m_data, std::move(name));
+    auto graphics_pipeline =
+        std::make_shared<GraphicsPipeline>(m_device, m_pipeline_cache, m_data, use_dynamic_rendering, std::move(name));
 
+    // @TODO: Does this work as intended?
     // NOTE: We reset the data of the builder here so it can be re-used
     m_data = {};
 
