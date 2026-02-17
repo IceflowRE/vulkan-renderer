@@ -430,7 +430,7 @@ void ExampleApp::render_frame() {
 
     const std::array<VkPipelineStageFlags, 1> stage_mask{VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
 
-#define INEXOR_USE_OLD_RENDERER 1
+#define INEXOR_USE_OLD_RENDERER 0
 
 #if INEXOR_USE_OLD_RENDERER
     const auto image_index = m_swapchain->acquire_next_image_index();
@@ -444,18 +444,7 @@ void ExampleApp::render_frame() {
     }));
     m_swapchain->present(image_index);
 #else
-    // RENDERGRAPH2
-    // @TODO Abstract this into rendergraph!
-    const auto img_index2 = m_swapchain2->acquire_next_image_index();
-    const auto &cmd_buf2 = m_device->request_command_buffer(VK_QUEUE_GRAPHICS_BIT, "rendergraph2");
     m_render_graph2->render();
-    cmd_buf2.submit_and_wait(inexor::vulkan_renderer::wrapper::make_info<VkSubmitInfo>({
-        .waitSemaphoreCount = 1,
-        .pWaitSemaphores = m_swapchain2->image_available_semaphore_pointer(),
-        .pWaitDstStageMask = stage_mask.data(),
-        .commandBufferCount = 1,
-    }));
-    m_swapchain2->present(img_index2);
 #endif
 
     if (auto fps_value = m_fps_limiter.get_fps()) {
@@ -557,17 +546,6 @@ void ExampleApp::setup_render_graph() {
         });
 
     // RENDERGRAPH2
-    m_graphics_pass2 = m_render_graph2->get_graphics_pass_builder()
-                           .writes_to(m_back_buffer2)
-                           .writes_to(m_depth_buffer2)
-                           .set_on_record([&](const CommandBuffer &cmd_buf) {
-                               cmd_buf.bind_descriptor_set(m_descriptor_set2, m_octree_pipeline2)
-                                   .bind_vertex_buffer(m_vertex_buffer2)
-                                   .bind_index_buffer(m_index_buffer2)
-                                   .draw_indexed(static_cast<std::uint32_t>(m_octree_indices.size()));
-                           })
-                           .build("Octree", vulkan_renderer::wrapper::DebugLabelColor::GREEN);
-    // RENDERGRAPH2
     // Descriptor management for the model/view/projection uniform buffer
     m_render_graph2->add_resource_descriptor(
         [&](vulkan_renderer::wrapper::descriptors::DescriptorSetLayoutBuilder &builder) {
@@ -654,15 +632,13 @@ void ExampleApp::setup_render_graph() {
 
     // RENDERGRAPH2
     m_graphics_pass2 = m_render_graph2->add_graphics_pass(
-        // @TODO bind pipeline!
         m_render_graph2->get_graphics_pass_builder()
             .writes_to(m_back_buffer2)
             .writes_to(m_depth_buffer2)
-            .writes_to(m_swapchain2)
             .set_on_record([&](const CommandBuffer &cmd_buf) {
                 cmd_buf
                     .bind_pipeline(m_octree_pipeline2)
-                    // @TODO Associate descriptor set with a pipeline layout?
+                    // @TODO Associate pipeline layout with descriptor sets internally!
                     .bind_descriptor_set(m_descriptor_set2, m_octree_pipeline2)
                     .bind_vertex_buffer(m_vertex_buffer2)
                     .bind_index_buffer(m_index_buffer2)

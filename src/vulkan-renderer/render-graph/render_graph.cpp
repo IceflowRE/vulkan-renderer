@@ -255,6 +255,11 @@ void RenderGraph::record_command_buffer_for_pass(const CommandBuffer &cmd_buf, G
 }
 
 void RenderGraph::render() {
+    // @TODO: Acquire next image index for all used unique(!) swapchains
+    // @TODO How to ensure uniqueness of swapchains in the rendergraph?
+    // Should we fix this by having some internal state management?
+    // Something like UUID, hash, or a simple boolean which tracks state?
+
     update_buffers();
     update_textures();
     // @TODO Only call if any data changed and try to accumulate write descriptor sets
@@ -272,7 +277,7 @@ void RenderGraph::render() {
         },
         m_swapchains_imgs_available);
 
-    // @TODO Implement!
+    // @TODO: Present swapchains!
 }
 
 void RenderGraph::reset() {
