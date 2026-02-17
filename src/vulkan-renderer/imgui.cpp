@@ -115,12 +115,18 @@ ImGUIOverlay::ImGUIOverlay(const wrapper::Device &device, const wrapper::Swapcha
     // RENDERGRAPH2
     m_vertex_buffer2 = render_graph2->add_buffer("imgui", render_graph::BufferType::VERTEX_BUFFER, [&]() {
         update();
-        m_vertex_buffer2.lock()->request_update(m_vertex_data);
+        // @TODO: Is this correct?
+        if (!m_vertex_data.empty()) {
+            m_vertex_buffer2.lock()->request_update(m_vertex_data);
+        }
     });
     // RENDERGRAPH2
     m_index_buffer2 = render_graph2->add_buffer("imgui", render_graph::BufferType::INDEX_BUFFER, [&]() {
         update();
-        m_vertex_buffer2.lock()->request_update(m_index_data);
+        // @TODO: Is this correct?
+        if (!m_index_data.empty()) {
+            m_vertex_buffer2.lock()->request_update(m_index_data);
+        }
     });
 
     // RENDERGRAPH2
@@ -177,6 +183,7 @@ ImGUIOverlay::ImGUIOverlay(const wrapper::Device &device, const wrapper::Swapcha
                                 .build("ImGui", true);
     });
 
+#if 0
     // RENDERGRAPH2
     m_imgui_pass2 = render_graph2->add_graphics_pass(
         render_graph2->get_graphics_pass_builder()
@@ -227,6 +234,7 @@ ImGUIOverlay::ImGUIOverlay(const wrapper::Device &device, const wrapper::Swapcha
                 }
             })
             .build("ImGui", render_graph::DebugLabelColor::BLUE));
+#endif
 
     m_index_buffer = render_graph->add<BufferResource>("imgui index buffer", BufferUsage::INDEX_BUFFER);
     m_vertex_buffer = render_graph->add<BufferResource>("imgui vertex buffer", BufferUsage::VERTEX_BUFFER);

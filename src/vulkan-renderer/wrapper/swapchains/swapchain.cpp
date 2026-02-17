@@ -78,10 +78,12 @@ void Swapchain::change_image_layout_to_prepare_for_rendering(const CommandBuffer
     }
     cmd_buf.insert_debug_label("Swapchain: VK_IMAGE_LAYOUT_UNDEFINED -> VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL",
                                get_debug_label_color(DebugLabelColor::GREEN));
-    // Prepare the swapchain image for rendering by changing the image layout from undefined layout (which is the layout
-    // it has after presenting) to color attachment optimal.
+// Prepare the swapchain image for rendering by changing the image layout from undefined layout (which is the layout
+// it has after presenting) to color attachment optimal.
+#if 0
     cmd_buf.change_image_layout(m_current_swapchain_img, VK_IMAGE_LAYOUT_UNDEFINED,
                                 VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+#endif
     m_prepared_for_rendering = true;
 }
 
@@ -95,8 +97,10 @@ void Swapchain::change_image_layout_to_prepare_for_presenting(const CommandBuffe
     cmd_buf.insert_debug_label("Swapchain: VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL -> VK_IMAGE_LAYOUT_PRESENT_SRC_KHR",
                                get_debug_label_color(DebugLabelColor::GREEN));
     // Prepare the swapchain image for presenting
+#if 0
     cmd_buf.change_image_layout(m_current_swapchain_img, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                 VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+#endif
     m_prepared_for_rendering = false;
 }
 

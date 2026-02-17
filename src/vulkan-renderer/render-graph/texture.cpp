@@ -14,9 +14,9 @@ using tools::VulkanException;
 
 Texture::Texture(const Device &device, std::string name, const TextureUsage usage, const VkFormat format,
                  const std::uint32_t width, const std::uint32_t height, const std::uint32_t channels,
-                 const VkSampleCountFlagBits samples, std::function<void()> on_update)
+                 const VkSampleCountFlagBits samples, std::optional<std::function<void()>> on_update)
     : m_device(device), m_name(std::move(name)), m_format(format), m_width(width), m_height(height),
-      m_channels(channels), m_samples(samples), m_on_check_for_updates(std::move(on_update)), m_usage(usage) {
+      m_channels(channels), m_samples(samples), m_on_update(std::move(on_update)), m_usage(usage) {
     if (m_name.empty()) {
         throw InexorException("Error: Parameter 'name' is an empty string!");
     }
@@ -25,6 +25,7 @@ Texture::Texture(const Device &device, std::string name, const TextureUsage usag
 }
 
 void Texture::create() {
+    // Create the image
     auto img_ci = wrapper::make_info<VkImageCreateInfo>({
         .imageType = VK_IMAGE_TYPE_2D,
         .format = m_format,
@@ -56,6 +57,7 @@ void Texture::create() {
         .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
     });
 
+    // Create the image view
     const auto img_view_ci = wrapper::make_info<VkImageViewCreateInfo>({
         // NOTE: .image will be filled by the Image wrapper
         .viewType = VK_IMAGE_VIEW_TYPE_2D,

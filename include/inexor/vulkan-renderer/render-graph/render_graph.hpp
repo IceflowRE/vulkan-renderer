@@ -126,9 +126,10 @@ public:
     /// @param on_update The texture update function
     /// @return A weak pointer to the texture which was created
     [[nodiscard]] std::weak_ptr<Texture> add_texture(std::string name, TextureUsage usage, VkFormat format,
-                                                     std::uint32_t width, std::uint32_t height, std::uint32_t channels,
-                                                     VkSampleCountFlagBits sample_count,
-                                                     std::function<void()> on_update);
+                                                     std::uint32_t width, std::uint32_t height,
+                                                     std::uint32_t channels = 1,
+                                                     VkSampleCountFlagBits sample_count = VK_SAMPLE_COUNT_1_BIT,
+                                                     std::optional<std::function<void()>> on_update = std::nullopt);
 
     void create_descriptor_set_layouts();
 

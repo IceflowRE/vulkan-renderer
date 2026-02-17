@@ -428,35 +428,35 @@ void ExampleApp::render_frame() {
         return;
     }
 
-    const auto image_index = m_swapchain->acquire_next_image_index();
-
-    const auto &cmd_buf = m_device->request_command_buffer(VK_QUEUE_GRAPHICS_BIT, "rendergraph");
-
-    m_render_graph->render(image_index, cmd_buf);
-
     const std::array<VkPipelineStageFlags, 1> stage_mask{VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
 
+#define INEXOR_USE_OLD_RENDERER 1
+
+#if INEXOR_USE_OLD_RENDERER
+    const auto image_index = m_swapchain->acquire_next_image_index();
+    const auto &cmd_buf = m_device->request_command_buffer(VK_QUEUE_GRAPHICS_BIT, "rendergraph");
+    m_render_graph->render(image_index, cmd_buf);
     cmd_buf.submit_and_wait(inexor::vulkan_renderer::wrapper::make_info<VkSubmitInfo>({
         .waitSemaphoreCount = 1,
         .pWaitSemaphores = m_swapchain->image_available_semaphore_pointer(),
         .pWaitDstStageMask = stage_mask.data(),
         .commandBufferCount = 1,
     }));
-
     m_swapchain->present(image_index);
-
+#else
     // RENDERGRAPH2
     // @TODO Abstract this into rendergraph!
     const auto img_index2 = m_swapchain2->acquire_next_image_index();
     const auto &cmd_buf2 = m_device->request_command_buffer(VK_QUEUE_GRAPHICS_BIT, "rendergraph2");
     m_render_graph2->render();
-    cmd_buf.submit_and_wait(inexor::vulkan_renderer::wrapper::make_info<VkSubmitInfo>({
+    cmd_buf2.submit_and_wait(inexor::vulkan_renderer::wrapper::make_info<VkSubmitInfo>({
         .waitSemaphoreCount = 1,
         .pWaitSemaphores = m_swapchain2->image_available_semaphore_pointer(),
         .pWaitDstStageMask = stage_mask.data(),
         .commandBufferCount = 1,
     }));
     m_swapchain2->present(img_index2);
+#endif
 
     if (auto fps_value = m_fps_limiter.get_fps()) {
         m_window->set_title("Inexor Vulkan API renderer demo - " + std::to_string(*fps_value) + " FPS");
@@ -488,6 +488,7 @@ void ExampleApp::recreate_swapchain() {
         m_vsync_enabled);
 
     m_render_graph = std::make_unique<RenderGraph>(*m_device, *m_swapchain);
+
     // RENDERGRAPH2
     m_render_graph2 =
         std::make_unique<inexor::vulkan_renderer::render_graph::RenderGraph>(*m_device, *m_pipeline_cache2);
@@ -520,37 +521,39 @@ void ExampleApp::setup_render_graph() {
     // RENDERGRAPH2
     m_back_buffer2 = m_render_graph2->add_texture(
         "back buffer", vulkan_renderer::render_graph::TextureUsage::COLOR_ATTACHMENT, m_swapchain->image_format(),
-        m_swapchain->extent().width, m_swapchain->extent().height, 1, VK_SAMPLE_COUNT_1_BIT, [&]() {
-            //
-        });
+        m_swapchain->extent().width, m_swapchain->extent().height);
 
     auto *depth_buffer = m_render_graph->add<TextureResource>("depth buffer", TextureUsage::DEPTH_STENCIL_BUFFER);
     depth_buffer->set_format(VK_FORMAT_D32_SFLOAT_S8_UINT);
     // RENDERGRAPH2
     m_depth_buffer2 = m_render_graph2->add_texture(
         "depth buffer", vulkan_renderer::render_graph::TextureUsage::DEPTH_ATTACHMENT, VK_FORMAT_D32_SFLOAT_S8_UINT,
-        m_swapchain->extent().width, m_swapchain->extent().height, 1, VK_SAMPLE_COUNT_1_BIT, [&]() {
-            //
-        });
+        m_swapchain->extent().width, m_swapchain->extent().height);
 
     m_index_buffer = m_render_graph->add<BufferResource>("index buffer", BufferUsage::INDEX_BUFFER);
     m_index_buffer->upload_data(m_octree_indices);
+
     // RENDERGRAPH2
     m_index_buffer2 =
         m_render_graph2->add_buffer("index buffer", vulkan_renderer::render_graph::BufferType::INDEX_BUFFER, [&]() {
             // Request rendergraph to update the index buffer
-            m_index_buffer2.lock()->request_update(m_octree_indices);
+            if (!m_octree_indices.empty()) {
+                m_index_buffer2.lock()->request_update(m_octree_indices);
+            }
         });
 
     m_vertex_buffer = m_render_graph->add<BufferResource>("vertex buffer", BufferUsage::VERTEX_BUFFER);
     m_vertex_buffer->add_vertex_attribute(VK_FORMAT_R32G32B32_SFLOAT, offsetof(OctreeGpuVertex, position)); // NOLINT
     m_vertex_buffer->add_vertex_attribute(VK_FORMAT_R32G32B32_SFLOAT, offsetof(OctreeGpuVertex, color));    // NOLINT
     m_vertex_buffer->upload_data(m_octree_vertices);
+
     // RENDERGRAPH2
     m_vertex_buffer2 =
         m_render_graph2->add_buffer("vertex buffer", vulkan_renderer::render_graph::BufferType::VERTEX_BUFFER, [&]() {
             // Request rendergraph to update the vertex buffer
-            m_vertex_buffer2.lock()->request_update(m_octree_vertices);
+            if (!m_octree_vertices.empty()) {
+                m_vertex_buffer2.lock()->request_update(m_octree_vertices);
+            }
         });
 
     // RENDERGRAPH2
@@ -626,10 +629,12 @@ void ExampleApp::setup_render_graph() {
                                          .offset = offsetof(OctreeVertex, color),
                                      },
                                  })
+                                 // @TODO: Default this implicitely?
                                  .set_input_assembly(wrapper::make_info<VkPipelineInputAssemblyStateCreateInfo>({
                                      .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
                                      .primitiveRestartEnable = VK_FALSE,
                                  }))
+                                 // @TODO: Default this implicitely?
                                  .set_rasterization(wrapper::make_info<VkPipelineRasterizationStateCreateInfo>({
                                      .polygonMode = VK_POLYGON_MODE_FILL,
                                      .cullMode = VK_CULL_MODE_BACK_BIT,
@@ -637,6 +642,7 @@ void ExampleApp::setup_render_graph() {
                                      .lineWidth = 1.0f,
                                  }))
                                  .set_multisampling(VK_SAMPLE_COUNT_1_BIT)
+                                 // @TODO: Default this implicitely?
                                  .add_default_color_blend_attachment()
                                  .set_depth_attachment_format(m_depth_buffer2.lock()->format())
                                  .add_color_attachment_format(m_back_buffer2.lock()->format())
@@ -652,11 +658,14 @@ void ExampleApp::setup_render_graph() {
         m_render_graph2->get_graphics_pass_builder()
             .writes_to(m_back_buffer2)
             .writes_to(m_depth_buffer2)
+            .writes_to(m_swapchain2)
             .set_on_record([&](const CommandBuffer &cmd_buf) {
                 cmd_buf
                     .bind_pipeline(m_octree_pipeline2)
                     // @TODO Associate descriptor set with a pipeline layout?
                     .bind_descriptor_set(m_descriptor_set2, m_octree_pipeline2)
+                    .bind_vertex_buffer(m_vertex_buffer2)
+                    .bind_index_buffer(m_index_buffer2)
                     .draw_indexed(static_cast<std::uint32_t>(m_octree_indices.size()));
             })
             .build("Octree", vulkan_renderer::render_graph::DebugLabelColor::GREEN));

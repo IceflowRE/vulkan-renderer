@@ -42,7 +42,7 @@ private:
     std::string m_name;
     // The texture type
     const TextureUsage m_usage;
-    // The texture update function
+    /// By definition, if this is not std::nullopt, this is a dynamic texture
     std::optional<std::function<void()>> m_on_update;
 
     /// The format of the texture
@@ -71,9 +71,6 @@ private:
     bool m_update_requested{true};
     void *m_src_texture_data{nullptr};
     std::size_t m_src_texture_data_size{0};
-
-    /// By definition, if this is not std::nullopt, this is a dynamic texture
-    std::function<void()> m_on_check_for_updates;
 
     // The staging buffer for updating the texture data
     VkBuffer m_staging_buffer{VK_NULL_HANDLE};
@@ -112,7 +109,7 @@ public:
     /// @param on_update The texture update function
     Texture(const Device &device, std::string name, TextureUsage usage, VkFormat format, std::uint32_t width,
             std::uint32_t height, std::uint32_t channels, VkSampleCountFlagBits samples,
-            std::function<void()> on_update);
+            std::optional<std::function<void()>> on_update);
 
     Texture(const Texture &) = delete;
     Texture(Texture &&) noexcept;

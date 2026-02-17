@@ -45,7 +45,7 @@ private:
     std::unique_ptr<Semaphore> m_img_available;
     std::string m_name;
     bool m_vsync_enabled{false};
-    VkImage m_current_swapchain_img{VK_NULL_HANDLE};
+    // VkImage m_current_swapchain_img{VK_NULL_HANDLE};
     VkImageView m_current_swapchain_img_view{VK_NULL_HANDLE};
     bool m_prepared_for_rendering{false};
 

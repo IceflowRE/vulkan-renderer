@@ -39,7 +39,7 @@ void RenderGraph::add_resource_descriptor(OnBuildDescriptorSetLayout on_build_de
 std::weak_ptr<Texture> RenderGraph::add_texture(std::string name, const TextureUsage usage, const VkFormat format,
                                                 const std::uint32_t width, const std::uint32_t height,
                                                 const std::uint32_t channels, const VkSampleCountFlagBits sample_count,
-                                                std::function<void()> on_update) {
+                                                std::optional<std::function<void()>> on_update) {
     return m_textures.emplace_back(std::make_shared<Texture>(m_device, std::move(name), usage, format, width, height,
                                                              channels, sample_count, std::move(on_update)));
 }
@@ -322,7 +322,9 @@ void RenderGraph::update_textures() {
     for (const auto &texture : m_textures) {
         // Check if this texture needs an update
         if (texture->usage() == TextureUsage::DEFAULT) {
-            texture->m_on_check_for_updates();
+            if (texture->m_on_update) {
+                std::invoke(texture->m_on_update.value());
+            }
         }
         if (texture->m_update_requested) {
             any_update_required = true;
