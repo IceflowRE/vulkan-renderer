@@ -430,19 +430,25 @@ void ExampleApp::render_frame() {
 
     const std::array<VkPipelineStageFlags, 1> stage_mask{VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
 
-#define INEXOR_USE_OLD_RENDERER 0
+#define INEXOR_USE_OLD_RENDERER 1
 
 #if INEXOR_USE_OLD_RENDERER
+
     const auto image_index = m_swapchain->acquire_next_image_index();
-    const auto &cmd_buf = m_device->request_command_buffer(VK_QUEUE_GRAPHICS_BIT, "rendergraph");
-    m_render_graph->render(image_index, cmd_buf);
-    cmd_buf.submit_and_wait(inexor::vulkan_renderer::wrapper::make_info<VkSubmitInfo>({
-        .waitSemaphoreCount = 1,
-        .pWaitSemaphores = m_swapchain->image_available_semaphore_pointer(),
-        .pWaitDstStageMask = stage_mask.data(),
-        .commandBufferCount = 1,
-    }));
+    // Wait on the swapchain's image-available semaphore
+    const VkSemaphore image_available_semaphore = m_swapchain->image_available_semaphore();
+    const std::span<const VkSemaphore> wait_semaphores{&image_available_semaphore, 1};
+
+    m_device->execute(
+        "render", VK_QUEUE_GRAPHICS_BIT, wrapper::DebugLabelColor::RED,
+        [&](const CommandBuffer &cmd_buf) {
+            //
+            m_render_graph->render(image_index, cmd_buf);
+        },
+        wait_semaphores);
+
     m_swapchain->present(image_index);
+
 #else
     m_render_graph2->render();
 #endif
@@ -570,6 +576,7 @@ void ExampleApp::setup_render_graph() {
                                                 vulkan_renderer::render_graph::BufferType::UNIFORM_BUFFER, [&]() {
                                                     // TODO: Is there a way to avoid external code to call
                                                     // request_update? Should we restrict this to the lambda?
+                                                    // We could, but does this make sense?
                                                     m_ubo.model = glm::mat4(1.0f);
                                                     m_ubo.view = m_camera->view_matrix();
                                                     m_ubo.proj = m_camera->perspective_matrix();
@@ -717,7 +724,9 @@ void ExampleApp::update_imgui_overlay() {
     ImGui::PopStyleVar();
     ImGui::Render();
 
+#if INEXOR_USE_OLD_RENDERER
     m_imgui_overlay->update();
+#endif
 }
 
 void ExampleApp::process_input() {

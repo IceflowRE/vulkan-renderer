@@ -289,6 +289,8 @@ void Device::execute(const std::string &name, const VkQueueFlagBits queue_type, 
     std::invoke(cmd_buf_recording_func, cmd_buf);
     // End the debug label region
     cmd_buf.end_debug_label_region();
+    // End command buffer recording
+    cmd_buf.end_command_buffer();
     // Submit the command buffer and do necessary synchronization
     cmd_buf.submit_and_wait(queue_type, wait_semaphores, signal_semaphores);
 }

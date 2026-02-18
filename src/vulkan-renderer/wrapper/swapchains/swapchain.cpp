@@ -56,6 +56,20 @@ Swapchain::Swapchain(Swapchain &&other) noexcept : m_device(other.m_device) {
     m_name = std::move(other.m_name);
 }
 
+void Swapchain::acquire_next_image(const std::uint64_t timeout) {
+    if (const auto result = vkAcquireNextImageKHR(m_device.device(), m_swapchain, timeout, m_img_available->semaphore(),
+                                                  VK_NULL_HANDLE, &m_current_swapchain_img_index);
+        result != VK_SUCCESS) {
+        if (result == VK_SUBOPTIMAL_KHR) {
+            // We need to recreate the swapchain.
+            setup_swapchain(m_current_extent, m_vsync_enabled);
+        } else {
+            throw VulkanException("Error: vkAcquireNextImageKHR failed!", result);
+        }
+    }
+    m_current_swapchain_img = m_imgs[m_current_swapchain_img_index];
+}
+
 std::uint32_t Swapchain::acquire_next_image_index(const std::uint64_t timeout) {
     std::uint32_t img_index = 0;
     if (const auto result = vkAcquireNextImageKHR(m_device.device(), m_swapchain, timeout, m_img_available->semaphore(),
@@ -68,11 +82,12 @@ std::uint32_t Swapchain::acquire_next_image_index(const std::uint64_t timeout) {
             throw VulkanException("Error: vkAcquireNextImageKHR failed!", result);
         }
     }
-    m_current_swapchain_img = m_imgs[img_index];
     return img_index;
 }
 
 void Swapchain::change_image_layout_to_prepare_for_rendering(const CommandBuffer &cmd_buf) {
+    // NOTE: It could be that inside of rendergraph, multiple passes are writing to one swapchain image.
+    // @TODO How to handle this correctly?
     if (m_prepared_for_rendering) {
         // The image layout has already been changed
         return;
@@ -87,6 +102,8 @@ void Swapchain::change_image_layout_to_prepare_for_rendering(const CommandBuffer
 }
 
 void Swapchain::change_image_layout_to_prepare_for_presenting(const CommandBuffer &cmd_buf) {
+    // NOTE: It could be that inside of rendergraph, multiple passes are writing to one swapchain image.
+    // @TODO How to handle this correctly?
     if (!m_prepared_for_rendering) {
         spdlog::warn("[Swapchain::change_image_layout_to_prepare_for_present] Warning: Swapchain image was not "
                      "prepared for rendering. Did you call this function without calling "
@@ -120,6 +137,23 @@ void Swapchain::present(const std::uint32_t img_index) {
         .swapchainCount = 1,
         .pSwapchains = &m_swapchain,
         .pImageIndices = &img_index,
+    });
+    if (const auto result = vkQueuePresentKHR(m_device.present_queue(), &present_info); result != VK_SUCCESS) {
+        if (result == VK_SUBOPTIMAL_KHR || result == VK_ERROR_OUT_OF_DATE_KHR) {
+            // We need to recreate the swapchain
+            setup_swapchain(m_current_extent, m_vsync_enabled);
+        } else {
+            // Exception is thrown if result is not VK_SUCCESS but also not VK_SUBOPTIMAL_KHR
+            throw VulkanException("Error: vkQueuePresentKHR failed!", result);
+        }
+    }
+}
+
+void Swapchain::present() {
+    const auto present_info = make_info<VkPresentInfoKHR>({
+        .swapchainCount = 1,
+        .pSwapchains = &m_swapchain,
+        .pImageIndices = &m_current_swapchain_img_index,
     });
     if (const auto result = vkQueuePresentKHR(m_device.present_queue(), &present_info); result != VK_SUCCESS) {
         if (result == VK_SUBOPTIMAL_KHR || result == VK_ERROR_OUT_OF_DATE_KHR) {

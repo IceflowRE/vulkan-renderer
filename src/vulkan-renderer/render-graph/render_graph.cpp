@@ -10,6 +10,19 @@ RenderGraph::RenderGraph(Device &device, const PipelineCache &pipeline_cache)
     : m_device(device), m_descriptor_set_allocator(device), m_write_descriptor_set_builder(device),
       m_graphics_pipeline_builder(device, pipeline_cache), m_descriptor_set_layout_builder(device) {}
 
+void RenderGraph::acquire_swapchain_images() {
+    // @TODO For now, we just assume that each swapchain which exist is written to by only one pass. In reality, this
+    // might necessarily be the case. How to handle this? Which code part should track swapchain state? We could either
+    // rule out this case during rendergraph compilation, or we accumulate all unique swapchains which are being written
+    // to, and acquire images per render() invocation only once.
+    for (const auto &pass : m_graphics_passes) {
+        for (const auto &swapchain : pass->m_write_swapchains) {
+            // As mentioned above, we assume here that each swapchain is written to uniquely
+            swapchain.first.lock()->acquire_next_image();
+        }
+    }
+}
+
 std::weak_ptr<Buffer> RenderGraph::add_buffer(std::string name, const BufferType type,
                                               std::function<void()> on_update) {
     return m_buffers.emplace_back(std::make_shared<Buffer>(m_device, std::move(name), type, std::move(on_update)));
@@ -60,7 +73,7 @@ void RenderGraph::check_for_cycles() {
     // @TODO Implement!
 }
 
-void RenderGraph::collect_swapchain_img_available_semaphores() {
+void RenderGraph::collect_swapchain_semaphores() {
     m_swapchains_imgs_available.clear();
     // Use an std::unordered_set to make sure every swapchain image available semaphore is in there only once!
     std::unordered_set<VkSemaphore> unique_semaphores;
@@ -83,7 +96,6 @@ void RenderGraph::compile() {
     // NOTE: Creating graphics pipelines requires us to know the corresponding pipeline layouts, which means descriptor
     // set layouts must be known! This means the descriptor management must become before creating graphics pipelines!
     create_graphics_pipelines();
-    collect_swapchain_img_available_semaphores();
 }
 
 void RenderGraph::fill_graphics_pass_rendering_info(GraphicsPass &pass) {
@@ -255,18 +267,14 @@ void RenderGraph::record_command_buffer_for_pass(const CommandBuffer &cmd_buf, G
 }
 
 void RenderGraph::render() {
-    // @TODO: Acquire next image index for all used unique(!) swapchains
-    // @TODO How to ensure uniqueness of swapchains in the rendergraph?
-    // Should we fix this by having some internal state management?
-    // Something like UUID, hash, or a simple boolean which tracks state?
-
+    // @TODO I think we need to wait for all utilized swapchain "img available" semaphores HERE
+    acquire_swapchain_images();
+    collect_swapchain_semaphores();
     update_buffers();
     update_textures();
-    // @TODO Only call if any data changed and try to accumulate write descriptor sets
     update_write_descriptor_sets();
 
-    // @TODO Use std::source_location for naming!
-    // @TODO: Implement random_debug_label_color?
+    // @TODO How to control granularity of command buffer recording and how to expose this in the rendergraph API?
     m_device.execute(
         "RenderGraph::render", VK_QUEUE_GRAPHICS_BIT, DebugLabelColor::CYAN,
         [&](const CommandBuffer &cmd_buf) {
@@ -277,7 +285,15 @@ void RenderGraph::render() {
         },
         m_swapchains_imgs_available);
 
-    // @TODO: Present swapchains!
+    // @TODO We should store the swapchains in a vector during swapchain compilation though!
+    for (const auto &pass : m_graphics_passes) {
+        for (const auto &swapchain : pass->m_write_swapchains) {
+            swapchain.first.lock()->present();
+        }
+    }
+
+    // @TODO I am terrible, remove me instantly!
+    m_device.wait_idle();
 }
 
 void RenderGraph::reset() {
@@ -296,14 +312,14 @@ void RenderGraph::update_buffers() {
     bool any_update_required = false;
     for (const auto &buffer : m_buffers) {
         std::invoke(buffer->m_on_check_for_update);
-        // TODO: A command buffer copy command is only required if the memory is not updated through std::memcpy!
         if (buffer->m_update_requested) {
             any_update_required = true;
         }
     }
 
     // Only start recording and submitting a command buffer on transfer queue if any update is required
-    // TODO: Use dedicated transfer queue instead of transfer queue for buffer updates!
+    // @TODO: Use dedicated transfer queue instead of transfer queue for buffer updates!
+    // @TODO: A command buffer copy command is only required if the memory is not updated through std::memcpy!
     if (any_update_required) {
         m_device.execute("[RenderGraph::update_buffers]", VK_QUEUE_GRAPHICS_BIT, DebugLabelColor::MAGENTA,
                          [&](const CommandBuffer &cmd_buf) {
@@ -357,6 +373,7 @@ void RenderGraph::update_textures() {
 }
 
 void RenderGraph::update_write_descriptor_sets() {
+    // @TODO Only call if any data changed and try to accumulate write descriptor sets
     m_write_descriptor_sets.clear();
     // NOTE: We don't reserve memory for the std::vector because we don't know how many write descriptor sets will exist
     // in total (each resource descriptor can have an arbitrary number of write descriptor sets). Because we call

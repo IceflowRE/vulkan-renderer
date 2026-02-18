@@ -43,7 +43,6 @@ private:
     const Device &m_device;
     std::string m_name;
     std::unique_ptr<Fence> m_wait_fence;
-    std::unique_ptr<Fence> m_cmd_buf_execution_completed;
 
     /// The staging buffers which are maybe used in the command buffer
     /// This vector of staging buffers will be cleared every time ``begin_command_buffer`` is called

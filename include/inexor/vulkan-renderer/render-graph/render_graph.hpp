@@ -80,7 +80,11 @@ private:
     /// only one VkSemaphore in here because collect_swapchain_image_available_semaphores method will fill this vector)
     std::vector<VkSemaphore> m_swapchains_imgs_available;
 
+    void acquire_swapchain_images();
+
 public:
+    // @TODO A lot of stuff here must be moved to private!
+
     /// Default constructor
     /// @param device The device wrapper
     /// @param pipeline_cache The Vulkan pipeline cache
@@ -137,7 +141,7 @@ public:
 
     void check_for_cycles();
 
-    void collect_swapchain_img_available_semaphores();
+    void collect_swapchain_semaphores();
 
     /// Compile the rendergraph
     void compile();
@@ -184,6 +188,7 @@ public:
 
     void update_textures();
 
+    /// Batch all descriptor writes into one std::vector and invoke vkUpdateDescriptorSets only once!
     void update_write_descriptor_sets();
 };
 

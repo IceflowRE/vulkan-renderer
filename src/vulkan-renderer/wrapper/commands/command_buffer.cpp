@@ -29,7 +29,6 @@ CommandBuffer::CommandBuffer(const Device &device, const VkCommandPool cmd_pool,
     m_device.set_debug_name(m_command_buffer, m_name);
 
     m_wait_fence = std::make_unique<Fence>(m_device, m_name, false);
-    m_cmd_buf_execution_completed = std::make_unique<Fence>(m_device, m_name, false);
 }
 
 CommandBuffer::CommandBuffer(CommandBuffer &&other) noexcept : m_device(other.m_device) {
@@ -143,6 +142,9 @@ const CommandBuffer &CommandBuffer::change_image_layout(const VkImage image, con
                                                         const VkImageSubresourceRange subres_range,
                                                         const VkPipelineStageFlags src_mask,
                                                         const VkPipelineStageFlags dst_mask) const {
+    if (image == VK_NULL_HANDLE) {
+        throw std::invalid_argument("Error: Parameter 'image' is an invalid pointer!");
+    }
     assert(new_layout != old_layout);
 
     auto barrier = make_info<VkImageMemoryBarrier>({
@@ -567,22 +569,18 @@ const CommandBuffer &CommandBuffer::submit_and_wait() const {
 void CommandBuffer::submit_and_wait(const VkQueueFlagBits queue_type,
                                     const std::span<const VkSemaphore> wait_semaphores,
                                     const std::span<const VkSemaphore> signal_semaphores) const {
-    end_command_buffer();
-
-    // TODO: What to do here with graphics queue?
-
     // NOTE: We must specify as many pipeline stage flags as there are wait semaphores!
     std::vector<VkPipelineStageFlags> wait_stages(wait_semaphores.size(),
                                                   VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
 
     const auto submit_info = make_info<VkSubmitInfo>({
         .waitSemaphoreCount = static_cast<std::uint32_t>(wait_semaphores.size()),
-        .pWaitSemaphores = wait_semaphores.data(),
-        .pWaitDstStageMask = wait_stages.data(),
+        .pWaitSemaphores = wait_semaphores.empty() ? nullptr : wait_semaphores.data(),
+        .pWaitDstStageMask = wait_semaphores.empty() ? nullptr : wait_stages.data(),
         .commandBufferCount = 1,
         .pCommandBuffers = &m_command_buffer,
         .signalSemaphoreCount = static_cast<std::uint32_t>(signal_semaphores.size()),
-        .pSignalSemaphores = signal_semaphores.data(),
+        .pSignalSemaphores = signal_semaphores.empty() ? nullptr : signal_semaphores.data(),
     });
 
     // TODO: Support VK_QUEUE_SPARSE_BINDING_BIT if required
@@ -601,10 +599,10 @@ void CommandBuffer::submit_and_wait(const VkQueueFlagBits queue_type,
         }
     };
 
-    if (const auto result = vkQueueSubmit(get_queue(), 1, &submit_info, m_cmd_buf_execution_completed->fence())) {
+    if (const auto result = vkQueueSubmit(get_queue(), 1, &submit_info, m_wait_fence->fence())) {
         throw VulkanException("Error: vkQueueSubmit failed!", result, m_name);
     }
-    m_cmd_buf_execution_completed->wait();
+    m_wait_fence->wait();
 }
 
 void CommandBuffer::set_debug_name(const std::string &name) {

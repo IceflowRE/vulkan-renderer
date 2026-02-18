@@ -114,18 +114,16 @@ ImGUIOverlay::ImGUIOverlay(const wrapper::Device &device, const wrapper::Swapcha
 
     // RENDERGRAPH2
     m_vertex_buffer2 = render_graph2->add_buffer("imgui", render_graph::BufferType::VERTEX_BUFFER, [&]() {
-        update();
-        // @TODO: Is this correct?
+        //  @TODO: Is this correct?
         if (!m_vertex_data.empty()) {
             m_vertex_buffer2.lock()->request_update(m_vertex_data);
         }
     });
     // RENDERGRAPH2
     m_index_buffer2 = render_graph2->add_buffer("imgui", render_graph::BufferType::INDEX_BUFFER, [&]() {
-        update();
-        // @TODO: Is this correct?
+        //  @TODO: Is this correct?
         if (!m_index_data.empty()) {
-            m_vertex_buffer2.lock()->request_update(m_index_data);
+            m_index_buffer2.lock()->request_update(m_index_data);
         }
     });
 
@@ -186,14 +184,15 @@ ImGUIOverlay::ImGUIOverlay(const wrapper::Device &device, const wrapper::Swapcha
     // RENDERGRAPH2
     m_imgui_pass2 = render_graph2->add_graphics_pass(
         render_graph2->get_graphics_pass_builder()
-            .writes_to(swapchain2)
             .conditionally_reads_from(m_previous_pass, !m_previous_pass.expired())
+            .writes_to(swapchain2)
             .set_on_record([&](const wrapper::commands::CommandBuffer &cmd_buf) {
                 ImDrawData *draw_data = ImGui::GetDrawData();
-                if (draw_data == nullptr || draw_data->TotalIdxCount == 0 || draw_data->TotalVtxCount == 0) {
-                    m_on_update_user_imgui_data();
+                if (draw_data == nullptr || draw_data->TotalVtxCount == 0 || draw_data->TotalIdxCount == 0) {
                     return;
                 }
+                // @TODO There was a valid point in RG2 to call the user-defined update method before recording command
+                // buffer. This will lead to creation of the vertex and index buffers.
                 const ImGuiIO &io = ImGui::GetIO();
                 m_push_const_block.scale = glm::vec2(2.0f / io.DisplaySize.x, 2.0f / io.DisplaySize.y);
 
@@ -273,7 +272,6 @@ ImGUIOverlay::ImGUIOverlay(const wrapper::Device &device, const wrapper::Swapcha
         if (imgui_draw_data == nullptr) {
             return;
         }
-
         const ImGuiIO &io = ImGui::GetIO();
         m_push_const_block.scale = glm::vec2(2.0f / io.DisplaySize.x, 2.0f / io.DisplaySize.y);
         m_push_const_block.translate = glm::vec2(-1.0f);
@@ -301,12 +299,11 @@ ImGUIOverlay::~ImGUIOverlay() {
 
 void ImGUIOverlay::update() {
     ImDrawData *imgui_draw_data = ImGui::GetDrawData();
-    if (!imgui_draw_data || imgui_draw_data->TotalVtxCount == 0)
+    if (!imgui_draw_data || imgui_draw_data->TotalVtxCount == 0) {
         return;
-
+    }
     m_vertex_data.clear();
     m_index_data.clear();
-
     for (std::size_t i = 0; i < imgui_draw_data->CmdListsCount; i++) {
         const ImDrawList *cmd_list = imgui_draw_data->CmdLists[i];
         m_vertex_data.insert(m_vertex_data.end(), cmd_list->VtxBuffer.Data,

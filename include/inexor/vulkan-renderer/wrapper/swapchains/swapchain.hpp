@@ -47,6 +47,7 @@ private:
     bool m_vsync_enabled{false};
     VkImage m_current_swapchain_img{VK_NULL_HANDLE};
     VkImageView m_current_swapchain_img_view{VK_NULL_HANDLE};
+    std::uint32_t m_current_swapchain_img_index{0};
     bool m_prepared_for_rendering{false};
 
     /// Call vkGetSwapchainImagesKHR
@@ -72,6 +73,11 @@ public:
 
     Swapchain &operator=(const Swapchain &) = delete;
     Swapchain &operator=(Swapchain &&) = delete;
+
+    /// Call vkAcquireNextImageKHR
+    /// @param timeout (``std::numeric_limits<std::uint64_t>::max()`` by default)
+    /// @exception VulkanException vkAcquireNextImageKHR failed
+    void acquire_next_image(std::uint64_t timeout = std::numeric_limits<std::uint64_t>::max());
 
     /// Call vkAcquireNextImageKHR
     /// @param timeout (``std::numeric_limits<std::uint64_t>::max()`` by default)
@@ -125,6 +131,8 @@ public:
     /// @exception VulkanException vkQueuePresentKHR call failed
     void present(std::uint32_t img_index);
 
+    void present();
+
     /// Setup the swapchain
     /// @param extent The extent of the swapchain.
     /// @param vsync_enabled ``true`` if vertical synchronization is enabled.
@@ -132,8 +140,8 @@ public:
     /// @exception VulkanException vkGetPhysicalDeviceSurfaceSupportKHR call failed
     void setup_swapchain(VkExtent2D extent, bool vsync_enabled);
 
-    [[nodiscard]] const VkSwapchainKHR *swapchain() const {
-        return &m_swapchain;
+    [[nodiscard]] const VkSwapchainKHR swapchain() const {
+        return m_swapchain;
     }
 };
 

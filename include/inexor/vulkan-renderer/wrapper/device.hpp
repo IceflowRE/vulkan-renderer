@@ -158,6 +158,8 @@ public:
     /// implemented using CommandBuffer wrapper. However, this would be a case for validation layers though.
     /// @param wait_semaphores The semaphores to wait on before starting command buffer execution (empty by default)
     /// @param signal_semaphores The semaphores to signal once command buffer execution will finish (empty by default)
+    /// @TODO Use std::source_location.
+    /// @TODO: Implement random_debug_label_color.
     void execute(const std::string &name, VkQueueFlagBits queue_type, DebugLabelColor dbg_label_color,
                  const std::function<void(const CommandBuffer &cmd_buf)> &cmd_buf_recording_func,
                  std::span<const VkSemaphore> wait_semaphores = {},
