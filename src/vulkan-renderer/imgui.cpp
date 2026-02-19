@@ -78,8 +78,8 @@ ImGUIOverlay::ImGUIOverlay(const wrapper::Device &device, const wrapper::Swapcha
             FONT_TEXTURE_CHANNELS, FONT_MIP_LEVELS, "ImGUI font texture");
 
         m_imgui_texture2 = render_graph2->add_texture(
-            "ImGui|Texture", render_graph::TextureUsage::COLOR_ATTACHMENT, VK_FORMAT_R8G8B8A8_UNORM,
-            m_font_texture_width, m_font_texture_height, FONT_TEXTURE_CHANNELS, VK_SAMPLE_COUNT_1_BIT, [&]() {
+            "ImGui|Texture", render_graph::TextureUsage::DEFAULT, VK_FORMAT_R8G8B8A8_UNORM, m_font_texture_width,
+            m_font_texture_height, FONT_TEXTURE_CHANNELS, VK_SAMPLE_COUNT_1_BIT, [&]() {
                 // RENDERGRAPH2
                 // Make sure the ImGui font texture is only updated once!
                 if (!m_imgui_font_texture_initialized2) {
@@ -315,6 +315,9 @@ void ImGUIOverlay::update() {
     // Upload buffers every frame
     m_vertex_buffer->upload_data(m_vertex_data);
     m_index_buffer->upload_data(m_index_data);
+
+    m_vertex_buffer2.lock()->request_update(m_vertex_data);
+    m_index_buffer2.lock()->request_update(m_index_data);
 }
 
 } // namespace inexor::vulkan_renderer

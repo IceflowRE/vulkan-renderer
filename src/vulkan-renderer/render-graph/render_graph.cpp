@@ -139,7 +139,6 @@ void RenderGraph::fill_graphics_pass_rendering_info(GraphicsPass &pass) {
 
     // Step 1: Process all write attachments (color, depth, stencil) of the graphics pass into VkRenderingInfo
     for (const auto &write_attachment : pass.m_write_attachments) {
-        // What type of attachment is this?
         const auto &attachment = write_attachment.first;
         const auto &clear_value = write_attachment.second;
         const auto rendering_info = fill_rendering_info_for_attachment(attachment, clear_value);
@@ -151,12 +150,10 @@ void RenderGraph::fill_graphics_pass_rendering_info(GraphicsPass &pass) {
         }
         case TextureUsage::DEPTH_ATTACHMENT: {
             pass.m_depth_attachment = rendering_info;
-            pass.m_has_depth_attachment = true;
             break;
         }
         case TextureUsage::STENCIL_ATTACHMENT: {
             pass.m_stencil_attachment = rendering_info;
-            pass.m_has_stencil_attachment = true;
             break;
         }
         default:
@@ -204,13 +201,13 @@ void RenderGraph::fill_graphics_pass_rendering_info(GraphicsPass &pass) {
         .layerCount = 1,
         .colorAttachmentCount = static_cast<std::uint32_t>(pass.m_color_attachments.size()),
         .pColorAttachments = (pass.m_color_attachments.size() > 0) ? pass.m_color_attachments.data() : nullptr,
-        .pDepthAttachment = pass.m_has_depth_attachment ? &pass.m_depth_attachment : nullptr,
-        .pStencilAttachment = pass.m_has_stencil_attachment ? &pass.m_stencil_attachment : nullptr,
+        .pDepthAttachment = pass.m_depth_attachment.has_value() ? std::addressof(*pass.m_depth_attachment) : nullptr,
+        .pStencilAttachment =
+            pass.m_stencil_attachment.has_value() ? std::addressof(*pass.m_stencil_attachment) : nullptr,
     });
 }
 
 void RenderGraph::record_command_buffer_for_pass(const CommandBuffer &cmd_buf, GraphicsPass &pass) {
-    cmd_buf.set_suboperation_debug_name("[Pass:" + pass.m_name + "]");
     // Start a new debug label for this graphics pass (visible in graphics debuggers like RenderDoc)
     cmd_buf.begin_debug_label_region(pass.m_name, pass.m_debug_label_color);
 
@@ -261,7 +258,6 @@ void RenderGraph::record_command_buffer_for_pass(const CommandBuffer &cmd_buf, G
             swapchain.first.lock()->change_image_layout_to_prepare_for_presenting(cmd_buf);
         }
     }
-
     // End the debug label for this graphics pass
     cmd_buf.end_debug_label_region();
 }
@@ -276,7 +272,7 @@ void RenderGraph::render() {
 
     // @TODO How to control granularity of command buffer recording and how to expose this in the rendergraph API?
     m_device.execute(
-        "RenderGraph::render", VK_QUEUE_GRAPHICS_BIT, DebugLabelColor::CYAN,
+        "RenderGraph::render()", VK_QUEUE_GRAPHICS_BIT, DebugLabelColor::CYAN,
         [&](const CommandBuffer &cmd_buf) {
             // Call the command buffer recording function of every graphics pass
             for (const auto &pass : m_graphics_passes) {
@@ -321,13 +317,11 @@ void RenderGraph::update_buffers() {
     // @TODO: Use dedicated transfer queue instead of transfer queue for buffer updates!
     // @TODO: A command buffer copy command is only required if the memory is not updated through std::memcpy!
     if (any_update_required) {
-        m_device.execute("[RenderGraph::update_buffers]", VK_QUEUE_GRAPHICS_BIT, DebugLabelColor::MAGENTA,
+        m_device.execute("RenderGraph::update_buffers()", VK_QUEUE_GRAPHICS_BIT, DebugLabelColor::MAGENTA,
                          [&](const CommandBuffer &cmd_buf) {
                              for (const auto &buffer : m_buffers) {
                                  if (buffer->m_update_requested) {
-                                     cmd_buf.set_suboperation_debug_name("[Buffer|Destroy:" + buffer->name() + "]");
                                      buffer->destroy_all();
-                                     cmd_buf.set_suboperation_debug_name("[Buffer|Update:" + buffer->name() + "]");
                                      buffer->create(cmd_buf);
                                  }
                              }
@@ -358,10 +352,8 @@ void RenderGraph::update_textures() {
                          [&](const CommandBuffer &cmd_buf) {
                              for (const auto &texture : m_textures) {
                                  if (texture->m_update_requested) {
-                                     // TODO: Remove set_suboperation_debug_name entirely and use debug label?
-                                     cmd_buf.set_suboperation_debug_name("[Texture|Destroy:" + texture->name() + "]");
+                                     // @TODO Do we need to recreate the images if image resolution doesn't change?
                                      texture->destroy();
-                                     cmd_buf.set_suboperation_debug_name("[Texture|Create:" + texture->name() + "]");
                                      texture->create();
                                      texture->update(cmd_buf);
                                  }

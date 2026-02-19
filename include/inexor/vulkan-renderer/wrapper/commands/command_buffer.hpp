@@ -565,11 +565,6 @@ public:
     /// @return A const reference to the this pointer (allowing method calls to be chained)
     const CommandBuffer &set_viewport(VkViewport viewport) const;
 
-    /// Set the name of a command buffer during recording of a specific command in the current command buffer
-    /// @param name The name of the suboperation
-    /// @return A const reference to the this pointer (allowing method calls to be chained)
-    const CommandBuffer &set_suboperation_debug_name(std::string name) const;
-
     /// Call vkQueueSubmit and use a fence to wait for command buffer submission and execution to complete
     /// @param submit_infos The submit infos
     const CommandBuffer &submit_and_wait(std::span<const VkSubmitInfo> submit_infos) const; // NOLINT

@@ -25,6 +25,7 @@ using wrapper::Sampler;
 
 /// Specifies the use of the texture
 enum class TextureUsage {
+    // @TODO Fix handling of textures inside of rendergraph2: Remove DEFAULT?
     DEFAULT,
     COLOR_ATTACHMENT,
     DEPTH_ATTACHMENT,

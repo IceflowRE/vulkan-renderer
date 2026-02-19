@@ -543,11 +543,6 @@ const CommandBuffer &CommandBuffer::set_viewport(const VkViewport viewport) cons
     return *this;
 }
 
-const CommandBuffer &CommandBuffer::set_suboperation_debug_name(std::string name) const {
-    m_device.set_debug_name(m_command_buffer, m_name + name);
-    return *this;
-}
-
 const CommandBuffer &CommandBuffer::submit_and_wait(const std::span<const VkSubmitInfo> submit_infos) const {
     submit(submit_infos);
     m_wait_fence->wait();

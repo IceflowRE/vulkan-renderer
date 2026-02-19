@@ -68,6 +68,7 @@ void Swapchain::acquire_next_image(const std::uint64_t timeout) {
         }
     }
     m_current_swapchain_img = m_imgs[m_current_swapchain_img_index];
+    m_current_swapchain_img_view = m_img_views[m_current_swapchain_img_index];
 }
 
 std::uint32_t Swapchain::acquire_next_image_index(const std::uint64_t timeout) {

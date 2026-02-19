@@ -430,7 +430,7 @@ void ExampleApp::render_frame() {
 
     const std::array<VkPipelineStageFlags, 1> stage_mask{VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
 
-#define INEXOR_USE_OLD_RENDERER 1
+#define INEXOR_USE_OLD_RENDERER 0
 
 #if INEXOR_USE_OLD_RENDERER
 
@@ -724,9 +724,7 @@ void ExampleApp::update_imgui_overlay() {
     ImGui::PopStyleVar();
     ImGui::Render();
 
-#if INEXOR_USE_OLD_RENDERER
     m_imgui_overlay->update();
-#endif
 }
 
 void ExampleApp::process_input() {

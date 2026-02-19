@@ -65,14 +65,10 @@ private:
     VkRenderingInfo m_rendering_info{};
     /// The color attachments inside of m_rendering_info
     std::vector<VkRenderingAttachmentInfo> m_color_attachments{};
-    /// Does this graphics pass have any depth attachment?
-    bool m_has_depth_attachment{false};
     /// The depth attachment inside of m_rendering_info
-    VkRenderingAttachmentInfo m_depth_attachment{};
-    /// Does this graphics pass have any stencil attachment?
-    bool m_has_stencil_attachment{false};
+    std::optional<VkRenderingAttachmentInfo> m_depth_attachment{std::nullopt};
     /// The stencil attachment inside of m_rendering_info
-    VkRenderingAttachmentInfo m_stencil_attachment{};
+    std::optional<VkRenderingAttachmentInfo> m_stencil_attachment{std::nullopt};
 
     /// Reset the rendering info
     void reset_rendering_info();

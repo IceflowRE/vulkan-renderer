@@ -99,10 +99,8 @@ GraphicsPass::GraphicsPass(GraphicsPass &&other) noexcept {
 void GraphicsPass::reset_rendering_info() {
     m_rendering_info = wrapper::make_info<VkRenderingInfo>();
     m_color_attachments.clear();
-    m_has_depth_attachment = false;
-    m_depth_attachment = wrapper::make_info<VkRenderingAttachmentInfo>();
-    m_has_stencil_attachment = false;
-    m_stencil_attachment = wrapper::make_info<VkRenderingAttachmentInfo>();
+    m_depth_attachment = std::nullopt;
+    m_stencil_attachment = std::nullopt;
 }
 
 } // namespace inexor::vulkan_renderer::render_graph
