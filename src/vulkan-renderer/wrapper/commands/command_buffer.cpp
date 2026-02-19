@@ -209,13 +209,34 @@ const CommandBuffer &CommandBuffer::change_image_layout(const VkImage image, con
 }
 
 const CommandBuffer &
-CommandBuffer::change_image_layout(const VkImage image, const VkImageLayout old_layout, const VkImageLayout new_layout,
-                                   const std::uint32_t mip_level_count, const std::uint32_t array_layer_count,
-                                   const std::uint32_t base_mip_level, const std::uint32_t base_array_layer,
-                                   const VkPipelineStageFlags src_mask, const VkPipelineStageFlags dst_mask) const {
+CommandBuffer::change_image_layout(const VkImage image, const VkFormat format, const VkImageLayout old_layout,
+                                   const VkImageLayout new_layout, const std::uint32_t mip_level_count,
+                                   const std::uint32_t array_layer_count, const std::uint32_t base_mip_level,
+                                   const std::uint32_t base_array_layer, const VkPipelineStageFlags src_mask,
+                                   const VkPipelineStageFlags dst_mask) const {
+
+    auto deduce_aspect_mask = [&]() -> VkImageAspectFlags {
+        switch (format) {
+        case VK_FORMAT_D16_UNORM:
+        case VK_FORMAT_D32_SFLOAT:
+            return VK_IMAGE_ASPECT_DEPTH_BIT;
+
+        case VK_FORMAT_S8_UINT:
+            return VK_IMAGE_ASPECT_STENCIL_BIT;
+
+        case VK_FORMAT_D16_UNORM_S8_UINT:
+        case VK_FORMAT_D24_UNORM_S8_UINT:
+        case VK_FORMAT_D32_SFLOAT_S8_UINT:
+            return VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+
+        default:
+            return VK_IMAGE_ASPECT_COLOR_BIT;
+        }
+    }();
+
     return change_image_layout(image, old_layout, new_layout,
                                {
-                                   .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                                   .aspectMask = deduce_aspect_mask,
                                    .baseMipLevel = base_mip_level,
                                    .levelCount = mip_level_count,
                                    .baseArrayLayer = base_array_layer,

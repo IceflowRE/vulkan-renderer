@@ -78,6 +78,7 @@ GraphicsPassBuilder::writes_to(std::variant<std::weak_ptr<Texture>, std::weak_pt
         if (swapchain.expired()) {
             throw InexorException("Error: Parameter 'write_attachment' is an invalid pointer!");
         }
+        // It's a std::weak_ptr<Swapchain> and the memory is valid
         m_write_swapchains.emplace_back(std::move(swapchain), std::move(clear_value));
     }
     return *this;

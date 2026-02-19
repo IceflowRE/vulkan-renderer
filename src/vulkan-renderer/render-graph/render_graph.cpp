@@ -17,7 +17,6 @@ void RenderGraph::acquire_swapchain_images() {
     // to, and acquire images per render() invocation only once.
     for (const auto &pass : m_graphics_passes) {
         for (const auto &swapchain : pass->m_write_swapchains) {
-            // As mentioned above, we assume here that each swapchain is written to uniquely
             swapchain.first.lock()->acquire_next_image();
         }
     }
@@ -106,7 +105,7 @@ void RenderGraph::fill_graphics_pass_rendering_info(GraphicsPass &pass) {
     /// @param clear_value The clear value
     auto fill_rendering_info_for_attachment = [&](const std::weak_ptr<Texture> &write_attachment,
                                                   const std::optional<VkClearValue> &clear_value) {
-        // @TODO Layout must depend on format + usage!
+        // @TODO Layout depends on format + usage!
         const auto attachment = write_attachment.lock();
         auto get_image_layout = [&]() {
             switch (attachment->usage()) {
@@ -201,9 +200,8 @@ void RenderGraph::fill_graphics_pass_rendering_info(GraphicsPass &pass) {
         .layerCount = 1,
         .colorAttachmentCount = static_cast<std::uint32_t>(pass.m_color_attachments.size()),
         .pColorAttachments = (pass.m_color_attachments.size() > 0) ? pass.m_color_attachments.data() : nullptr,
-        .pDepthAttachment = pass.m_depth_attachment.has_value() ? std::addressof(*pass.m_depth_attachment) : nullptr,
-        .pStencilAttachment =
-            pass.m_stencil_attachment.has_value() ? std::addressof(*pass.m_stencil_attachment) : nullptr,
+        .pDepthAttachment = pass.m_depth_attachment.has_value() ? &pass.m_depth_attachment.value() : nullptr,
+        .pStencilAttachment = pass.m_stencil_attachment.has_value() ? &pass.m_stencil_attachment.value() : nullptr,
     });
 }
 
@@ -348,7 +346,7 @@ void RenderGraph::update_textures() {
     // Only start recording and submitting a command buffer if any update is required
     // TODO: Use dedicated transfer queue instead of graphics queue for texture updates!
     if (any_update_required) {
-        m_device.execute("[RenderGraph::update_textures]", VK_QUEUE_GRAPHICS_BIT, DebugLabelColor::LIME,
+        m_device.execute("RenderGraph::update_textures()", VK_QUEUE_GRAPHICS_BIT, DebugLabelColor::LIME,
                          [&](const CommandBuffer &cmd_buf) {
                              for (const auto &texture : m_textures) {
                                  if (texture->m_update_requested) {

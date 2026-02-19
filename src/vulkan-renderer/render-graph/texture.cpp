@@ -98,6 +98,24 @@ void Texture::create() {
         img_ci.samples = m_samples;
         m_msaa_image->create(img_ci, img_view_ci);
     }
+
+    // @TODO Simplify this!
+    // If this is a depth buffer, we must change the image layout once
+    if (m_usage == TextureUsage::DEPTH_ATTACHMENT) {
+        m_device.execute("Texture::create()", VK_QUEUE_GRAPHICS_BIT, wrapper::DebugLabelColor::GREEN,
+                         [&](const CommandBuffer &cmd_buf) {
+                             //
+                             cmd_buf.change_image_layout(m_image->image(), m_format, VK_IMAGE_LAYOUT_UNDEFINED,
+                                                         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+                         });
+    } else if (m_usage == TextureUsage::COLOR_ATTACHMENT) {
+        m_device.execute("Texture::create()", VK_QUEUE_GRAPHICS_BIT, wrapper::DebugLabelColor::GREEN,
+                         [&](const CommandBuffer &cmd_buf) {
+                             //
+                             cmd_buf.change_image_layout(m_image->image(), m_format, VK_IMAGE_LAYOUT_UNDEFINED,
+                                                         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+                         });
+    }
 }
 
 void Texture::destroy() {

@@ -97,7 +97,7 @@ void Swapchain::change_image_layout_to_prepare_for_rendering(const CommandBuffer
                                get_debug_label_color(DebugLabelColor::GREEN));
     // Prepare the swapchain image for rendering by changing the image layout from undefined layout (which is the layout
     // it has after presenting) to color attachment optimal.
-    cmd_buf.change_image_layout(m_current_swapchain_img, VK_IMAGE_LAYOUT_UNDEFINED,
+    cmd_buf.change_image_layout(m_current_swapchain_img, m_format, VK_IMAGE_LAYOUT_UNDEFINED,
                                 VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
     m_prepared_for_rendering = true;
 }
@@ -114,7 +114,7 @@ void Swapchain::change_image_layout_to_prepare_for_presenting(const CommandBuffe
     cmd_buf.insert_debug_label("Swapchain: VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL -> VK_IMAGE_LAYOUT_PRESENT_SRC_KHR",
                                get_debug_label_color(DebugLabelColor::GREEN));
     // Prepare the swapchain image for presenting
-    cmd_buf.change_image_layout(m_current_swapchain_img, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+    cmd_buf.change_image_layout(m_current_swapchain_img, m_format, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                 VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
     m_prepared_for_rendering = false;
 }
@@ -196,6 +196,8 @@ void Swapchain::setup_swapchain(const VkExtent2D requested_extent, const bool vs
         .clipped = VK_TRUE,
         .oldSwapchain = old_swapchain,
     });
+
+    m_format = swapchain_ci.imageFormat;
 
     spdlog::trace("Creating swapchain");
 

@@ -231,7 +231,7 @@ public:
     /// @param dst_mask The destination pipeline stage flags (``VK_PIPELINE_STAGE_ALL_COMMANDS_BIT`` by default)
     /// @return A const reference to the dereferenced ``this`` pointer (allowing for method calls to be chained)
     const CommandBuffer & // NOLINT
-    change_image_layout(VkImage image, VkImageLayout old_layout, VkImageLayout new_layout,
+    change_image_layout(VkImage image, VkFormat format, VkImageLayout old_layout, VkImageLayout new_layout,
                         std::uint32_t mip_level_count = 1, std::uint32_t array_layer_count = 1,
                         std::uint32_t base_mip_level = 0, std::uint32_t base_array_layer = 0,
                         VkPipelineStageFlags src_mask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,

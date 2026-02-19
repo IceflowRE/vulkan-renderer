@@ -183,7 +183,10 @@ ImGUIOverlay::ImGUIOverlay(const wrapper::Device &device, const wrapper::Swapcha
 
     // RENDERGRAPH2
     m_imgui_pass2 = render_graph2->add_graphics_pass(
-        render_graph2->get_graphics_pass_builder()
+        render_graph2
+            ->get_graphics_pass_builder()
+            // @TODO Decouple passes from actual reads and writes: You can say pass B comes after pass A and reads from
+            // it, but that does not have to imply which buffers are written to in A or read from in B...
             .conditionally_reads_from(m_previous_pass, !m_previous_pass.expired())
             .writes_to(swapchain2)
             .set_on_record([&](const wrapper::commands::CommandBuffer &cmd_buf) {
