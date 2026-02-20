@@ -9,11 +9,10 @@ namespace inexor::vulkan_renderer {
 
 ImGUIOverlay::ImGUIOverlay(const wrapper::Device &device, const wrapper::Swapchain &swapchain,
                            std::weak_ptr<Swapchain> swapchain2, RenderGraph *render_graph, TextureResource *back_buffer,
-                           std::weak_ptr<GraphicsPass> previous_pass,
+                           std::weak_ptr<render_graph::Texture> back_buffer2,
                            std::shared_ptr<render_graph::RenderGraph> render_graph2,
                            std::function<void()> on_update_user_imgui_data)
-    : m_device(device), m_swapchain(swapchain), m_previous_pass(previous_pass),
-      m_on_update_user_imgui_data(std::move(on_update_user_imgui_data)) {
+    : m_device(device), m_swapchain(swapchain), m_on_update_user_imgui_data(std::move(on_update_user_imgui_data)) {
     spdlog::trace("Creating ImGUI context");
     ImGui::CreateContext();
 
@@ -193,6 +192,7 @@ ImGUIOverlay::ImGUIOverlay(const wrapper::Device &device, const wrapper::Swapcha
             // @TODO Decouple passes from actual reads and writes: You can say pass B comes after pass A and reads from
             // it, but that does not have to imply which buffers are written to in A or read from in B...
             .writes_to(swapchain2)
+            //.writes_to(back_buffer2)
             .reads_from(m_vertex_buffer2)
             .reads_from(m_index_buffer2)
             .set_on_record([&](const wrapper::commands::CommandBuffer &cmd_buf) {
@@ -204,6 +204,8 @@ ImGUIOverlay::ImGUIOverlay(const wrapper::Device &device, const wrapper::Swapcha
                 // buffer. This will lead to creation of the vertex and index buffers.
                 const ImGuiIO &io = ImGui::GetIO();
                 m_push_const_block.scale = glm::vec2(2.0f / io.DisplaySize.x, 2.0f / io.DisplaySize.y);
+                // TODO Do we need this? YES WE DO
+                m_push_const_block.translate = glm::vec2(-1.0f);
 
                 cmd_buf.bind_pipeline(m_imgui_pipeline2)
                     .bind_descriptor_set(m_descriptor_set2, m_imgui_pipeline2)

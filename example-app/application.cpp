@@ -496,7 +496,7 @@ void ExampleApp::recreate_swapchain() {
 
     // RENDERGRAPH2
     m_imgui_overlay = std::make_unique<ImGUIOverlay>(*m_device, *m_swapchain, m_swapchain2, m_render_graph.get(),
-                                                     m_back_buffer, m_graphics_pass2, m_render_graph2, [&]() {
+                                                     m_back_buffer, m_back_buffer2, m_render_graph2, [&]() {
                                                          // RENDERGRAPH2
                                                          update_imgui_overlay();
                                                      });
@@ -602,6 +602,7 @@ void ExampleApp::setup_render_graph() {
                                      .stride = sizeof(OctreeVertex),
                                      .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
                                  }})
+                                 // NOTE: Instead of making these set methods fancy, we just explicitely pass the data
                                  // @TODO Use C++26 reflection feature once its available and turn this into a template
                                  .set_vertex_input_attributes({
                                      {
@@ -629,6 +630,7 @@ void ExampleApp::setup_render_graph() {
                                      .frontFace = VK_FRONT_FACE_CLOCKWISE,
                                      .lineWidth = 1.0f,
                                  }))
+                                 // @TODO Use implicit default here as well
                                  .set_multisampling(VK_SAMPLE_COUNT_1_BIT)
                                  .add_default_color_blend_attachment()
                                  .set_depth_attachment_format(m_depth_buffer2.lock()->format())
@@ -640,9 +642,11 @@ void ExampleApp::setup_render_graph() {
     });
 
     // RENDERGRAPH2
+    // @TODO We don't have to turn add_graphics_pass into accepting a lambda, but we could to make the API more
+    // consistent. We could immediately invoke the lambda to execute it on the spot...
     m_graphics_pass2 = m_render_graph2->add_graphics_pass(
         m_render_graph2->get_graphics_pass_builder()
-            .writes_to(m_back_buffer2)
+            .writes_to(m_swapchain2)
             .writes_to(m_depth_buffer2)
             .reads_from(m_vertex_buffer2)
             .writes_to(m_index_buffer2)

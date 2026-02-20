@@ -19,6 +19,7 @@ GraphicsPipelineBuilder::GraphicsPipelineBuilder(GraphicsPipelineBuilder &&other
     m_data = other.m_data;
 }
 
+// @TODO Remove bool parameter once we switch to dynamic rendering only
 std::shared_ptr<GraphicsPipeline> GraphicsPipelineBuilder::build(std::string name, bool use_dynamic_rendering) {
     if (name.empty()) {
         throw InexorException("Error: Parameter 'name' is an empty string!");
