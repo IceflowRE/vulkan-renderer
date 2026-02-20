@@ -27,13 +27,15 @@ using wrapper::swapchains::Swapchain;
 class GraphicsPassBuilder {
 private:
     /// The command buffer recording function
-    std::function<void(const CommandBuffer &)> m_on_record_cmd_buffer{};
+    std::function<void(const CommandBuffer &)> m_on_record_cmd_buffer;
     /// The textures to which this graphics pass writes to
-    std::vector<std::pair<std::weak_ptr<Texture>, std::optional<VkClearValue>>> m_texture_writes{};
+    std::vector<std::pair<std::weak_ptr<Texture>, std::optional<VkClearValue>>> m_texture_writes;
     /// The swapchains to which this graphics pass writes to
-    std::vector<std::pair<std::weak_ptr<Swapchain>, std::optional<VkClearValue>>> m_swapchain_writes{};
+    std::vector<std::pair<std::weak_ptr<Swapchain>, std::optional<VkClearValue>>> m_swapchain_writes;
     /// The buffers which are read by this graphics pass
-    std::vector<std::weak_ptr<Buffer>> m_buffer_reads{};
+    std::vector<std::weak_ptr<Buffer>> m_buffer_reads;
+    /// The buffers which are written to by this graphics pass
+    std::vector<std::weak_ptr<Buffer>> m_buffer_writes;
 
     /// Reset the data of the graphics pass builder
     void reset();
@@ -62,6 +64,12 @@ public:
     /// @param on_record_cmd_buffer The command buffer recording function
     /// @return A const reference to the this pointer (allowing method calls to be chained)
     [[nodiscard]] GraphicsPassBuilder &set_on_record(std::function<void(const CommandBuffer &)> on_record_cmd_buffer);
+
+    /// Specify that this graphics pass writes to a buffer
+    /// @brief buffer The buffer that is written to
+    /// @note This feature might be used in the future if a pass writes to a buffer
+    /// @return A const reference to the this pointer (allowing method calls to be chained)
+    [[nodiscard]] GraphicsPassBuilder &writes_to(std::weak_ptr<Buffer> buffer);
 
     /// Specify that this graphics pass writes to an either a std::weak_ptr<Texture> or a std::weak_ptr<Swapchain>
     /// @param attachment The attachment (either a std::weak_ptr<Texture> or a std::weak_ptr<Swapchain>)

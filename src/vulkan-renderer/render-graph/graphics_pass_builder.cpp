@@ -42,11 +42,20 @@ void GraphicsPassBuilder::reset() {
     m_swapchain_writes.clear();
     m_texture_writes.clear();
     m_buffer_reads.clear();
+    m_buffer_writes.clear();
 }
 
 GraphicsPassBuilder &
 GraphicsPassBuilder::set_on_record(std::function<void(const CommandBuffer &)> on_record_cmd_buffer) {
     m_on_record_cmd_buffer = std::move(on_record_cmd_buffer);
+    return *this;
+}
+
+GraphicsPassBuilder &GraphicsPassBuilder::writes_to(std::weak_ptr<Buffer> buffer) {
+    if (buffer.expired()) {
+        throw InexorException("Error: Parameter 'buffer' is an invalid pointer!");
+    }
+    m_buffer_writes.emplace_back(std::move(buffer));
     return *this;
 }
 
