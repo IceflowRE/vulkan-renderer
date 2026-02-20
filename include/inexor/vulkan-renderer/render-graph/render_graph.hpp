@@ -141,8 +141,6 @@ public:
 
     void check_for_cycles();
 
-    void collect_swapchain_semaphores();
-
     /// Compile the rendergraph
     void compile();
 

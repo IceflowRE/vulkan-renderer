@@ -45,17 +45,13 @@ private:
     std::array<float, 4> m_debug_label_color;
     /// The extent
     VkExtent2D m_extent{0, 0};
-    /// The graphics passes this pass reads from
-    std::vector<std::weak_ptr<GraphicsPass>> m_graphics_pass_reads;
-    /// TODO: Do we need this?
-    /// A weak pointer to the previous graphics pass
-    std::weak_ptr<GraphicsPass> m_previous_pass{};
-    /// A weak pointer to the next graphics pass
-    std::weak_ptr<GraphicsPass> m_next_pass{};
+
+    /// The buffers which are read by this graphics pass
+    std::vector<std::weak_ptr<Buffer>> m_buffer_reads;
     /// The texture attachments of this pass (unified means color, depth, stencil attachment or a swapchain)
-    std::vector<std::pair<std::weak_ptr<Texture>, std::optional<VkClearValue>>> m_write_attachments{};
+    std::vector<std::pair<std::weak_ptr<Texture>, std::optional<VkClearValue>>> m_texture_writes;
     /// The swapchains this graphics pass writes to
-    std::vector<std::pair<std::weak_ptr<Swapchain>, std::optional<VkClearValue>>> m_write_swapchains{};
+    std::vector<std::pair<std::weak_ptr<Swapchain>, std::optional<VkClearValue>>> m_swapchain_writes;
 
     // All the data below will be filled and used by rendergraph only
 
@@ -77,14 +73,14 @@ public:
     /// Default constructor
     /// @param name The name of the graphics pass
     /// @param on_record_cmd_buffer The command buffer recording function of the graphics pass
-    /// @param graphics_pass_reads The graphics passes this graphics pass reads from
-    /// @param write_attachments The attachment this graphics pass writes to
-    /// @param write_swapchains The swapchains this graphics pass writes to
+    /// @param buffer_reads The buffers which are read by this graphics pass
+    /// @param texture_writes The textures which are written to by this graphics pass
+    /// @param swapchain_writes The swapchains which are written to by this graphics pass
     /// @param pass_debug_label_color The debug label of the pass (visible in graphics debuggers like RenderDoc)
     GraphicsPass(std::string name, std::function<void(const CommandBuffer &)> on_record_cmd_buffer,
-                 std::vector<std::weak_ptr<GraphicsPass>> graphics_pass_reads,
-                 std::vector<std::pair<std::weak_ptr<Texture>, std::optional<VkClearValue>>> write_attachments,
-                 std::vector<std::pair<std::weak_ptr<Swapchain>, std::optional<VkClearValue>>> write_swapchains,
+                 std::vector<std::weak_ptr<Buffer>> buffer_reads,
+                 std::vector<std::pair<std::weak_ptr<Texture>, std::optional<VkClearValue>>> texture_writes,
+                 std::vector<std::pair<std::weak_ptr<Swapchain>, std::optional<VkClearValue>>> swapchain_writes,
                  wrapper::DebugLabelColor pass_debug_label_color);
 
     GraphicsPass(const GraphicsPass &) = delete;

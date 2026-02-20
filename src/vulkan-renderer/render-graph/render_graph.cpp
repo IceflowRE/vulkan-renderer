@@ -11,15 +11,22 @@ RenderGraph::RenderGraph(Device &device, const PipelineCache &pipeline_cache)
       m_graphics_pipeline_builder(device, pipeline_cache), m_descriptor_set_layout_builder(device) {}
 
 void RenderGraph::acquire_swapchain_images() {
+    // Use an std::unordered_set to make sure every swapchain image available semaphore is in there only once!
+    std::unordered_set<VkSemaphore> unique_semaphores;
+    m_swapchains_imgs_available.clear();
+
     // @TODO For now, we just assume that each swapchain which exist is written to by only one pass. In reality, this
     // might necessarily be the case. How to handle this? Which code part should track swapchain state? We could either
     // rule out this case during rendergraph compilation, or we accumulate all unique swapchains which are being written
     // to, and acquire images per render() invocation only once.
+    // @TODO Should we call vkAcquireNextImageKHR in parallel if we have multiple swapchains?
     for (const auto &pass : m_graphics_passes) {
-        for (const auto &swapchain : pass->m_write_swapchains) {
+        for (const auto &swapchain : pass->m_swapchain_writes) {
             swapchain.first.lock()->acquire_next_image();
+            unique_semaphores.emplace(swapchain.first.lock()->image_available_semaphore());
         }
     }
+    m_swapchains_imgs_available = std::vector<VkSemaphore>(unique_semaphores.begin(), unique_semaphores.end());
 }
 
 std::weak_ptr<Buffer> RenderGraph::add_buffer(std::string name, const BufferType type,
@@ -70,19 +77,6 @@ void RenderGraph::create_graphics_pipelines() {
 
 void RenderGraph::check_for_cycles() {
     // @TODO Implement!
-}
-
-void RenderGraph::collect_swapchain_semaphores() {
-    m_swapchains_imgs_available.clear();
-    // Use an std::unordered_set to make sure every swapchain image available semaphore is in there only once!
-    std::unordered_set<VkSemaphore> unique_semaphores;
-    for (const auto &pass : m_graphics_passes) {
-        for (const auto &swapchain : pass->m_write_swapchains) {
-            unique_semaphores.emplace(swapchain.first.lock()->image_available_semaphore());
-        }
-    }
-    // Convert the unordered_set into the std::vector so we can pass it during command buffer submission
-    m_swapchains_imgs_available = std::vector<VkSemaphore>(unique_semaphores.begin(), unique_semaphores.end());
 }
 
 void RenderGraph::compile() {
@@ -137,7 +131,7 @@ void RenderGraph::fill_graphics_pass_rendering_info(GraphicsPass &pass) {
     };
 
     // Step 1: Process all write attachments (color, depth, stencil) of the graphics pass into VkRenderingInfo
-    for (const auto &write_attachment : pass.m_write_attachments) {
+    for (const auto &write_attachment : pass.m_texture_writes) {
         const auto &attachment = write_attachment.first;
         const auto &clear_value = write_attachment.second;
         const auto rendering_info = fill_rendering_info_for_attachment(attachment, clear_value);
@@ -179,7 +173,7 @@ void RenderGraph::fill_graphics_pass_rendering_info(GraphicsPass &pass) {
     };
 
     // TODO: Step 2: Process all swapchain writes of the graphics pass into VkRenderingInfo
-    for (const auto &write_swapchain : pass.m_write_swapchains) {
+    for (const auto &write_swapchain : pass.m_swapchain_writes) {
         const auto &swapchain = write_swapchain.first.lock();
         const auto &clear_value = write_swapchain.second;
         pass.m_color_attachments.push_back(fill_write_info_for_swapchain(swapchain, clear_value));
@@ -214,7 +208,7 @@ void RenderGraph::record_command_buffer_for_pass(const CommandBuffer &cmd_buf, G
 
     // If there are writes to swapchains, the image layout of the swapchain must be changed because it comes back in
     // undefined layout after presenting
-    for (const auto &swapchain : pass.m_write_swapchains) {
+    for (const auto &swapchain : pass.m_swapchain_writes) {
         // NOTE: We don't need to check if the previous pass wrote to this swapchain because we already check in the
         // code below if the next pass (if any) will write to this swapchain again, so if the last pass already wrote to
         // this swapchain, calling change_image_layout_to_prepare_for_rendering will not do anything.
@@ -239,31 +233,19 @@ void RenderGraph::record_command_buffer_for_pass(const CommandBuffer &cmd_buf, G
     // C again!
 
     // Change the swapchain image layouts to prepare the swapchains for presenting
-    for (const auto &swapchain : pass.m_write_swapchains) {
+    for (const auto &swapchain : pass.m_swapchain_writes) {
         // TODO: Check if next pass (if any) writes to that swapchain as well!
-        bool next_pass_writes_to_this_swapchain = false;
-        if (!pass.m_next_pass.expired()) {
-            const auto &next_pass = pass.m_next_pass.lock();
-            for (const auto &next_pass_write_swapchain : next_pass->m_write_swapchains) {
-                if (next_pass_write_swapchain.first.lock() == swapchain.first.lock()) {
-                    next_pass_writes_to_this_swapchain = true;
-                }
-            }
-        }
-        // NOTE: If the next pass writes to this swapchain as well, we can keep it in the current image layout.
+        // If the next pass writes to this swapchain as well, we can keep it in the current image layout.
         // Only otherwise, we change the image layout to prepare the swapchain image for presenting.
-        if (!next_pass_writes_to_this_swapchain) {
-            swapchain.first.lock()->change_image_layout_to_prepare_for_presenting(cmd_buf);
-        }
+        // @TODO Compare the underlying VkSwapchainKHR pointers?
+        swapchain.first.lock()->change_image_layout_to_prepare_for_presenting(cmd_buf);
     }
     // End the debug label for this graphics pass
     cmd_buf.end_debug_label_region();
 }
 
 void RenderGraph::render() {
-    // @TODO I think we need to wait for all utilized swapchain "img available" semaphores HERE
     acquire_swapchain_images();
-    collect_swapchain_semaphores();
     update_buffers();
     update_textures();
     update_write_descriptor_sets();
@@ -281,11 +263,10 @@ void RenderGraph::render() {
 
     // @TODO We should store the swapchains in a vector during swapchain compilation though!
     for (const auto &pass : m_graphics_passes) {
-        for (const auto &swapchain : pass->m_write_swapchains) {
+        for (const auto &swapchain : pass->m_swapchain_writes) {
             swapchain.first.lock()->present();
         }
     }
-
     // @TODO I am terrible, remove me instantly!
     m_device.wait_idle();
 }

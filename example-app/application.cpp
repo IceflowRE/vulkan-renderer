@@ -639,9 +639,14 @@ void ExampleApp::setup_render_graph() {
 
     // RENDERGRAPH2
     m_graphics_pass2 = m_render_graph2->add_graphics_pass(
-        m_render_graph2->get_graphics_pass_builder()
+        m_render_graph2
+            ->get_graphics_pass_builder()
+            // @TODO Implement reads_from(vertex or index buffers) to declare dependencies
+            // @TODO Implement writes_to(vertex or index buffer) if we need this
             .writes_to(m_back_buffer2)
             .writes_to(m_depth_buffer2)
+            .reads_from(m_vertex_buffer2)
+            .reads_from(m_index_buffer2)
             .set_on_record([&](const CommandBuffer &cmd_buf) {
                 cmd_buf
                     .bind_pipeline(m_octree_pipeline2)

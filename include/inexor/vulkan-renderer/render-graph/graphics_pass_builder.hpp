@@ -26,14 +26,14 @@ using wrapper::swapchains::Swapchain;
 /// A builder class for graphics passes in the rendergraph
 class GraphicsPassBuilder {
 private:
-    /// Add members which describe data related to graphics passes here
+    /// The command buffer recording function
     std::function<void(const CommandBuffer &)> m_on_record_cmd_buffer{};
-    /// The graphics passes which are read by this graphics pass
-    std::vector<std::weak_ptr<GraphicsPass>> m_graphics_pass_reads{};
-    /// The texture resources this graphics pass writes to
-    std::vector<std::pair<std::weak_ptr<Texture>, std::optional<VkClearValue>>> m_write_attachments{};
-    /// The swapchain this graphics pass writes to
-    std::vector<std::pair<std::weak_ptr<Swapchain>, std::optional<VkClearValue>>> m_write_swapchains{};
+    /// The textures to which this graphics pass writes to
+    std::vector<std::pair<std::weak_ptr<Texture>, std::optional<VkClearValue>>> m_texture_writes{};
+    /// The swapchains to which this graphics pass writes to
+    std::vector<std::pair<std::weak_ptr<Swapchain>, std::optional<VkClearValue>>> m_swapchain_writes{};
+    /// The buffers which are read by this graphics pass
+    std::vector<std::weak_ptr<Buffer>> m_buffer_reads{};
 
     /// Reset the data of the graphics pass builder
     void reset();
@@ -53,23 +53,10 @@ public:
     /// @return The graphics pass that was just created
     [[nodiscard]] std::shared_ptr<GraphicsPass> build(std::string name, DebugLabelColor color);
 
-    /// Specify that this graphics pass A reads from another graphics pass B (if the weak_ptr to B is not expired),
-    /// meaning B should be rendered before A. It is perfect valid for 'graphics_pass' to be an invalid pointer, in
-    /// which case the read is not added.
-    /// @param condition The condition under which the pass is read from
-    /// @param graphics_pass The graphics pass (can be an invalid pointer)
+    /// Specify that this graphics pass reads from a buffer
+    /// @param buffer The buffer which is read by this graphics pass
     /// @return A const reference to the this pointer (allowing method calls to be chained)
-    [[nodiscard]] GraphicsPassBuilder &conditionally_reads_from(std::weak_ptr<GraphicsPass> graphics_pass,
-                                                                bool condition);
-
-    // @TODO Do we need conditionally_writes_to?
-
-    // TODO: Implement reads_from for vertex/index buffers!
-
-    /// Specify that this graphics pass A reads from another graphics pass B, meaning B should be rendered before A
-    /// @param graphics_pass The graphics pass which is read by this graphics pass
-    /// @return A const reference to the this pointer (allowing method calls to be chained)
-    [[nodiscard]] GraphicsPassBuilder &reads_from(std::weak_ptr<GraphicsPass> graphics_pass);
+    [[nodiscard]] GraphicsPassBuilder &reads_from(std::weak_ptr<Buffer> buffer);
 
     /// Set the function which will be called when the command buffer for rendering of the pass is being recorded
     /// @param on_record_cmd_buffer The command buffer recording function

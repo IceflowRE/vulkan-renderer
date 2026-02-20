@@ -15,41 +15,33 @@ GraphicsPassBuilder::GraphicsPassBuilder() {
 
 GraphicsPassBuilder::GraphicsPassBuilder(GraphicsPassBuilder &&other) noexcept {
     m_on_record_cmd_buffer = std::move(other.m_on_record_cmd_buffer);
-    m_write_attachments = std::move(other.m_write_attachments);
-    m_write_swapchains = std::move(other.m_write_swapchains);
-    m_graphics_pass_reads = std::move(other.m_graphics_pass_reads);
+    m_swapchain_writes = std::move(other.m_swapchain_writes);
+    m_texture_writes = std::move(other.m_texture_writes);
+    m_buffer_reads = std::move(other.m_buffer_reads);
 }
 
 std::shared_ptr<GraphicsPass> GraphicsPassBuilder::build(std::string name, const DebugLabelColor pass_debug_color) {
-    auto graphics_pass = std::make_shared<GraphicsPass>(
-        std::move(name), std::move(m_on_record_cmd_buffer), std::move(m_graphics_pass_reads),
-        std::move(m_write_attachments), std::move(m_write_swapchains), pass_debug_color);
+    auto graphics_pass =
+        std::make_shared<GraphicsPass>(std::move(name), std::move(m_on_record_cmd_buffer), std::move(m_buffer_reads),
+                                       std::move(m_texture_writes), std::move(m_swapchain_writes), pass_debug_color);
     // NOTE: We could use RAII here to bind the call of reset() to some destructor call like a scope_guard does.
     reset();
     return graphics_pass;
 }
 
-GraphicsPassBuilder &GraphicsPassBuilder::conditionally_reads_from(std::weak_ptr<GraphicsPass> graphics_pass,
-                                                                   const bool condition) {
-    if (!graphics_pass.expired() && condition) {
-        m_graphics_pass_reads.push_back(std::move(graphics_pass));
+GraphicsPassBuilder &GraphicsPassBuilder::reads_from(std::weak_ptr<Buffer> buffer) {
+    if (buffer.expired()) {
+        throw InexorException("Error: Parameter 'buffer' is an invalid pointer!");
     }
-    // NOTE: No exception is thrown if this graphics pass is expired because it's an optional pass!
-    return *this;
-}
-
-GraphicsPassBuilder &GraphicsPassBuilder::reads_from(std::weak_ptr<GraphicsPass> graphics_pass) {
-    if (graphics_pass.expired()) {
-        throw InexorException("Error: Parameter 'graphics_pass' is an invalid pointer!");
-    }
-    m_graphics_pass_reads.push_back(std::move(graphics_pass));
+    m_buffer_reads.push_back(std::move(buffer));
     return *this;
 }
 
 void GraphicsPassBuilder::reset() {
     m_on_record_cmd_buffer = {};
-    m_graphics_pass_reads.clear();
-    m_write_attachments.clear();
+    m_swapchain_writes.clear();
+    m_texture_writes.clear();
+    m_buffer_reads.clear();
 }
 
 GraphicsPassBuilder &
@@ -70,7 +62,7 @@ GraphicsPassBuilder::writes_to(std::variant<std::weak_ptr<Texture>, std::weak_pt
             throw InexorException("Error: Parameter 'write_attachment' is an invalid pointer!");
         }
         // It's a std::weak_ptr<Texture> and the memory is valid
-        m_write_attachments.emplace_back(std::move(texture), std::move(clear_value));
+        m_texture_writes.emplace_back(std::move(texture), std::move(clear_value));
     } else {
         // Otherwise, this must be a std::weak_ptr<Swapchain>! No need to check with std::holds_alternative explicitely.
         auto &swapchain = std::get<std::weak_ptr<Swapchain>>(write_attachment);
@@ -79,7 +71,7 @@ GraphicsPassBuilder::writes_to(std::variant<std::weak_ptr<Texture>, std::weak_pt
             throw InexorException("Error: Parameter 'write_attachment' is an invalid pointer!");
         }
         // It's a std::weak_ptr<Swapchain> and the memory is valid
-        m_write_swapchains.emplace_back(std::move(swapchain), std::move(clear_value));
+        m_swapchain_writes.emplace_back(std::move(swapchain), std::move(clear_value));
     }
     return *this;
 }

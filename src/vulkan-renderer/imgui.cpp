@@ -187,8 +187,9 @@ ImGUIOverlay::ImGUIOverlay(const wrapper::Device &device, const wrapper::Swapcha
             ->get_graphics_pass_builder()
             // @TODO Decouple passes from actual reads and writes: You can say pass B comes after pass A and reads from
             // it, but that does not have to imply which buffers are written to in A or read from in B...
-            .conditionally_reads_from(m_previous_pass, !m_previous_pass.expired())
             .writes_to(swapchain2)
+            .reads_from(m_vertex_buffer2)
+            .reads_from(m_index_buffer2)
             .set_on_record([&](const wrapper::commands::CommandBuffer &cmd_buf) {
                 ImDrawData *draw_data = ImGui::GetDrawData();
                 if (draw_data == nullptr || draw_data->TotalVtxCount == 0 || draw_data->TotalIdxCount == 0) {
