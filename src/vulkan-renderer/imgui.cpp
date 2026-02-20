@@ -161,10 +161,14 @@ ImGUIOverlay::ImGUIOverlay(const wrapper::Device &device, const wrapper::Swapcha
                                     .frontFace = VK_FRONT_FACE_CLOCKWISE,
                                     .lineWidth = 1.0f,
                                 }))
+                                // @TODO: use_default_input_assembly()? Make this implicitely default
+                                // @TODO Implement an internal method called add_implicit_defaults() to reset method
+                                // Calls to set_input_assembly or set_rasterization allow this to be overwritten!
                                 .set_input_assembly(wrapper::make_info<VkPipelineInputAssemblyStateCreateInfo>({
                                     .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
                                     .primitiveRestartEnable = VK_FALSE,
                                 }))
+                                // @TODO Default this as well
                                 .set_multisampling(VK_SAMPLE_COUNT_1_BIT, 1.0f)
                                 .add_default_color_blend_attachment()
                                 .add_color_attachment_format(m_swapchain.image_format())
@@ -174,6 +178,7 @@ ImGUIOverlay::ImGUIOverlay(const wrapper::Device &device, const wrapper::Swapcha
                                 })
                                 .set_scissor(m_swapchain.extent())
                                 .set_viewport(m_swapchain.extent())
+                                // @TODO Rename to use_shader()
                                 .add_shader(m_vertex_shader)
                                 .add_shader(m_fragment_shader)
                                 .set_descriptor_set_layout(m_descriptor_set_layout2)

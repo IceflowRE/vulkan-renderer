@@ -39,6 +39,7 @@ std::shared_ptr<GraphicsPipeline> GraphicsPipelineBuilder::build(std::string nam
 }
 
 GraphicsPipelineBuilder &GraphicsPipelineBuilder::add_color_attachment_format(const VkFormat format) {
+    // @TODO How does this relate to add_color_blend_attachment?
     m_data.color_attachments.push_back(format);
     return *this;
 }
@@ -50,6 +51,7 @@ GraphicsPipelineBuilder::add_color_blend_attachment(const VkPipelineColorBlendAt
 }
 
 GraphicsPipelineBuilder &GraphicsPipelineBuilder::add_default_color_blend_attachment() {
+    // @TODO Is this default generalized enough?
     return add_color_blend_attachment({
         .blendEnable = VK_TRUE,
         .srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,

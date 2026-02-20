@@ -602,6 +602,7 @@ void ExampleApp::setup_render_graph() {
                                      .stride = sizeof(OctreeVertex),
                                      .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
                                  }})
+                                 // @TODO Use C++26 reflection feature once its available and turn this into a template
                                  .set_vertex_input_attributes({
                                      {
                                          .location = 0,
@@ -615,11 +616,13 @@ void ExampleApp::setup_render_graph() {
                                      },
                                  })
                                  // @TODO: Default this implicitely?
+                                 // use_default_input_assembly
                                  .set_input_assembly(wrapper::make_info<VkPipelineInputAssemblyStateCreateInfo>({
                                      .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
                                      .primitiveRestartEnable = VK_FALSE,
                                  }))
                                  // @TODO: Default this implicitely?
+                                 // use_default_rasterization()
                                  .set_rasterization(wrapper::make_info<VkPipelineRasterizationStateCreateInfo>({
                                      .polygonMode = VK_POLYGON_MODE_FILL,
                                      .cullMode = VK_CULL_MODE_BACK_BIT,
@@ -627,7 +630,6 @@ void ExampleApp::setup_render_graph() {
                                      .lineWidth = 1.0f,
                                  }))
                                  .set_multisampling(VK_SAMPLE_COUNT_1_BIT)
-                                 // @TODO: Default this implicitely?
                                  .add_default_color_blend_attachment()
                                  .set_depth_attachment_format(m_depth_buffer2.lock()->format())
                                  .add_color_attachment_format(m_back_buffer2.lock()->format())
