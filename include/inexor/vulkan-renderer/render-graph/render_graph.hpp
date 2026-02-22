@@ -64,6 +64,7 @@ private:
 
     /// Resource descriptors are managed by specifying those three functions to the rendergraph
     /// Rendergraph will then call those function in the correct order during rendergraph compilation
+    // NOTE: Although the container is called tuple, it can have more than two types in it (here it's three)
     using ResourceDescriptor =
         std::tuple<OnBuildDescriptorSetLayout, OnAllocateDescriptorSet, OnBuildWriteDescriptorSets>;
 
@@ -72,15 +73,52 @@ private:
     /// All write descriptor sets will be stored in here so we can have one batched call to vkUpdateDescriptorSets
     std::vector<VkWriteDescriptorSet> m_write_descriptor_sets;
 
-    ///
+    /// A using declaration for graphics pipeline create functions
     using OnCreateGraphicsPipeline = std::function<void(GraphicsPipelineBuilder &)>;
-    ///
+    /// The graphics pipeline create function
     std::vector<OnCreateGraphicsPipeline> m_graphics_pipeline_create_functions;
     /// The unique wait semaphores of all swapchains used (This means if one swapchain is used mutliple times it's still
     /// only one VkSemaphore in here because collect_swapchain_image_available_semaphores method will fill this vector)
     std::vector<VkSemaphore> m_swapchains_imgs_available;
 
     void acquire_swapchain_images();
+
+    void allocate_descriptor_sets();
+
+    void sort_graphics_passes_by_order();
+
+    void update_buffers();
+
+    void update_textures();
+
+    void create_descriptor_set_layouts();
+
+    void create_graphics_pipelines();
+
+    /// Ensure that rendergraph is a directed acyclic graph (DAG)
+    void check_for_cycles();
+
+    /// Batch all descriptor writes into one std::vector and invoke vkUpdateDescriptorSets only once!
+    void update_write_descriptor_sets();
+
+    /// Fill the VkRenderingInfo for a graphics pass
+    /// @param pass The graphics pass
+    void fill_graphics_pass_rendering_info(GraphicsPass &pass);
+
+    /// Record the command buffer of a pass. After a lot of discussions about the API design of rendergraph, we came to
+    /// the conclusion that it's the full responsibility of the programmer to manually bind pipelines, descriptors sets,
+    /// and buffers inside of the on_record function instead of attempting to abstract all of this in rendergraph. This
+    /// means rendergraph will not automatically bind pipelines, buffers, or descriptor sets! The reason for this is
+    /// that there could be complex rendering going on inside of the on_record function with an arbitrary number of
+    /// pipelines descriptor sets, and buffers being bound in a nontrivial order or under conditional cases. We then
+    /// refrained from designing a simple API inside of rendergraph which automatically binds one graphics pipeline,
+    /// descriptor set, or a set of buffers at the beginning of rendering before calling on_record because it would
+    /// cause confusion about the correct API usage for the advanced use cases. Nonetheless, the creation of buffers,
+    /// descriptors, or pipelines is still the full responsibility of the rendergraph, but you need to use them manually
+    /// inside of the on_record function.
+    /// @param cmd_buf The command buffer to record the pass into
+    /// @param pass The graphics pass to record the command buffer for
+    void record_command_buffer_for_pass(const CommandBuffer &cmd_buf, GraphicsPass &pass);
 
 public:
     // @TODO A lot of stuff here must be moved to private!
@@ -103,10 +141,8 @@ public:
     [[nodiscard]] std::weak_ptr<GraphicsPass> add_graphics_pass(std::shared_ptr<GraphicsPass> graphics_pass);
 
     /// Add a graphics pipeline to rendergraph
-    /// @param on_create_graphics_pipeline The graphics pipe
+    /// @param on_create_graphics_pipeline The graphics pipeline
     void add_graphics_pipeline(OnCreateGraphicsPipeline on_create_graphics_pipeline);
-
-    void allocate_descriptor_sets();
 
     /// Add a resource descriptor to the rendergraph
     /// @param on_build_descriptor_set_layout
@@ -135,59 +171,24 @@ public:
                                                      VkSampleCountFlagBits sample_count = VK_SAMPLE_COUNT_1_BIT,
                                                      std::optional<std::function<void()>> on_update = std::nullopt);
 
-    void create_descriptor_set_layouts();
-
-    void create_graphics_pipelines();
-
-    void check_for_cycles();
-
     /// Compile the rendergraph
     void compile();
 
-    /// Fill the VkRenderingInfo for a graphics pass
-    /// @param pass The graphics pass
-    void fill_graphics_pass_rendering_info(GraphicsPass &pass);
-
-    /// @NOTE This get method cannot be const because a builder modifies its data when being used!
+    /// @note This get method cannot be const because a builder modifies its data when being used!
     [[nodiscard]] GraphicsPassBuilder &get_graphics_pass_builder() {
         return m_graphics_pass_builder;
     }
 
-    /// @NOTE This get method cannot be const because a builder modifies its data when being used!
+    /// @note This get method cannot be const because a builder modifies its data when being used!
     [[nodiscard]] GraphicsPipelineBuilder &get_graphics_pipeline_builder() {
         return m_graphics_pipeline_builder;
     }
 
-    /// Record the command buffer of a pass. After a lot of discussions about the API design of rendergraph, we came to
-    /// the conclusion that it's the full responsibility of the programmer to manually bind pipelines, descriptors sets,
-    /// and buffers inside of the on_record function instead of attempting to abstract all of this in rendergraph. This
-    /// means rendergraph will not automatically bind pipelines, buffers, or descriptor sets! The reason for this is
-    /// that there could be complex rendering going on inside of the on_record function with an arbitrary number of
-    /// pipelines descriptor sets, and buffers being bound in a nontrivial order or under conditional cases. We then
-    /// refrained from designing a simple API inside of rendergraph which automatically binds one graphics pipeline,
-    /// descriptor set, or a set of buffers at the beginning of rendering before calling on_record because it would
-    /// cause confusion about the correct API usage for the advanced use cases. Nonetheless, the creation of buffers,
-    /// descriptors, or pipelines is still the full responsibility of the rendergraph, but you need to use them manually
-    /// inside of the on_record function.
-    /// @param cmd_buf The command buffer to record the pass into
-    /// @param pass The graphics pass to record the command buffer for
-    void record_command_buffer_for_pass(const CommandBuffer &cmd_buf, GraphicsPass &pass);
-
-    /// Render the rendergraph
+    /// Render a frame
     void render();
 
     /// Reset the entire rendergraph
     void reset();
-
-    /// Sort the graphics passes their dependencies
-    void sort_graphics_passes_by_order();
-
-    void update_buffers();
-
-    void update_textures();
-
-    /// Batch all descriptor writes into one std::vector and invoke vkUpdateDescriptorSets only once!
-    void update_write_descriptor_sets();
 };
 
 } // namespace inexor::vulkan_renderer::render_graph

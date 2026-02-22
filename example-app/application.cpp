@@ -395,10 +395,8 @@ ExampleApp::ExampleApp(int argc, char **argv) {
 
     m_window->show();
 
-    // RENDERGRAPH2
     m_pipeline_cache2 = std::make_unique<PipelineCache>(*m_device);
 
-    // RENDERGRAPH2
     m_render_graph2 = std::make_unique<vulkan_renderer::render_graph::RenderGraph>(*m_device, *m_pipeline_cache2);
 
     recreate_swapchain();
@@ -430,13 +428,11 @@ void ExampleApp::recreate_swapchain() {
 
     // TODO: This is quite naive, we don't need to recompile the whole render graph on swapchain invalidation.
 
-    // RENDERGRAPH2
     // Recreate the swapchain
     m_swapchain2->setup_swapchain(
         VkExtent2D{static_cast<std::uint32_t>(window_width), static_cast<std::uint32_t>(window_height)},
         m_vsync_enabled);
 
-    // RENDERGRAPH2
     m_render_graph2 =
         std::make_unique<inexor::vulkan_renderer::render_graph::RenderGraph>(*m_device, *m_pipeline_cache2);
 
@@ -446,50 +442,41 @@ void ExampleApp::recreate_swapchain() {
 
     m_imgui_overlay.reset();
 
-    // RENDERGRAPH2
     m_imgui_overlay = std::make_unique<ImGUIOverlay>(*m_device, m_swapchain2, m_back_buffer2, m_render_graph2, [&]() {
-        // RENDERGRAPH2
+        // This is the user-defined external ImGui update function
         update_imgui_overlay();
     });
 
-    // RENDERGRAPH2
     m_render_graph2->compile();
 }
 
 void ExampleApp::setup_render_graph() {
-    // RENDERGRAPH2
-    // @TODO Where to place this? DO we need this here?
     m_render_graph2->reset();
 
-    // RENDERGRAPH2
     m_back_buffer2 = m_render_graph2->add_texture(
         "back buffer", vulkan_renderer::render_graph::TextureUsage::COLOR_ATTACHMENT, m_swapchain2->image_format(),
         m_swapchain2->extent().width, m_swapchain2->extent().height);
 
-    // RENDERGRAPH2
     m_depth_buffer2 = m_render_graph2->add_texture(
         "depth buffer", vulkan_renderer::render_graph::TextureUsage::DEPTH_ATTACHMENT, VK_FORMAT_D32_SFLOAT_S8_UINT,
         m_swapchain2->extent().width, m_swapchain2->extent().height);
 
-    // RENDERGRAPH2
     m_index_buffer2 =
         m_render_graph2->add_buffer("index buffer", vulkan_renderer::render_graph::BufferType::INDEX_BUFFER, [&]() {
-            // Request rendergraph to update the index buffer
+            // @TODO Ideally we would not need the if check?
             if (!m_octree_indices.empty()) {
                 m_index_buffer2.lock()->request_update(m_octree_indices);
             }
         });
 
-    // RENDERGRAPH2
     m_vertex_buffer2 =
         m_render_graph2->add_buffer("vertex buffer", vulkan_renderer::render_graph::BufferType::VERTEX_BUFFER, [&]() {
-            // Request rendergraph to update the vertex buffer
+            // @TODO Ideally we would not need the if check?
             if (!m_octree_vertices.empty()) {
                 m_vertex_buffer2.lock()->request_update(m_octree_vertices);
             }
         });
 
-    // RENDERGRAPH2
     // Descriptor management for the model/view/projection uniform buffer
     m_render_graph2->add_resource_descriptor(
         [&](vulkan_renderer::wrapper::descriptors::DescriptorSetLayoutBuilder &builder) {
@@ -509,7 +496,7 @@ void ExampleApp::setup_render_graph() {
             // This will require changes to DescriptorSetLayoutBuilder and more!
             return builder.add(m_descriptor_set2, m_mvp_matrix2, 0).build();
         });
-    // RENDERGRAPH2
+
     m_mvp_matrix2 = m_render_graph2->add_buffer("model/view/proj",
                                                 vulkan_renderer::render_graph::BufferType::UNIFORM_BUFFER, [&]() {
                                                     // TODO: Is there a way to avoid external code to call
@@ -524,15 +511,12 @@ void ExampleApp::setup_render_graph() {
                                                 });
 
     // @TODO We don't need to re-load the shaders when recreating swapchain!
-    // RENDERGRAPH2
     m_vertex_shader2 =
         std::make_shared<Shader>(*m_device, VK_SHADER_STAGE_VERTEX_BIT, "Octree", "shaders/main.vert.spv");
     m_fragment_shader2 =
         std::make_shared<Shader>(*m_device, VK_SHADER_STAGE_FRAGMENT_BIT, "Octree", "shaders/main.frag.spv");
 
-    // RENDERGRAPH2
     m_render_graph2->add_graphics_pipeline([&](wrapper::pipelines::GraphicsPipelineBuilder &builder) {
-        // RENDERGRAPH2
         m_octree_pipeline2 = builder.add_shader(m_vertex_shader2)
                                  .add_shader(m_fragment_shader2)
                                  .set_vertex_input_bindings({{
@@ -579,7 +563,6 @@ void ExampleApp::setup_render_graph() {
                                  .build("Octree", true);
     });
 
-    // RENDERGRAPH2
     // @TODO We don't have to turn add_graphics_pass into accepting a lambda, but we could to make the API more
     // consistent. We could immediately invoke the lambda to execute it on the spot...
     m_graphics_pass2 = m_render_graph2->add_graphics_pass(
@@ -590,6 +573,7 @@ void ExampleApp::setup_render_graph() {
             .writes_to(m_index_buffer2)
             .reads_from(m_index_buffer2)
             .set_on_record([&](const CommandBuffer &cmd_buf) {
+                // @TODO Explain in the docs how object lifetime is important in here!
                 cmd_buf
                     .bind_pipeline(m_octree_pipeline2)
                     // @TODO Associate pipeline layout with descriptor sets internally!
@@ -698,6 +682,8 @@ void ExampleApp::check_octree_collisions() {
 void ExampleApp::run() {
     spdlog::trace("Running Application");
 
+    // @TODO If the window is minimized, don't poll aggressively.
+    // Instead, sleep for like 10 ms, and check if it's maximized again!
     while (!m_window->should_close()) {
         m_window->poll();
         if (m_fps_limiter.is_next_frame_allowed()) {

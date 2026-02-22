@@ -25,7 +25,6 @@ Texture::Texture(const Device &device, std::string name, const TextureUsage usag
 }
 
 void Texture::create() {
-    // Create the image
     auto img_ci = wrapper::make_info<VkImageCreateInfo>({
         .imageType = VK_IMAGE_TYPE_2D,
         .format = m_format,
@@ -57,7 +56,6 @@ void Texture::create() {
         .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
     });
 
-    // Create the image view
     const auto img_view_ci = wrapper::make_info<VkImageViewCreateInfo>({
         // NOTE: .image will be filled by the Image wrapper
         .viewType = VK_IMAGE_VIEW_TYPE_2D,
@@ -100,7 +98,7 @@ void Texture::create() {
     }
 
     // @TODO Simplify this!
-    // If this is a depth buffer, we must change the image layout once
+    // The image layout must be changed only once for depth and color attachments
     if (m_usage == TextureUsage::DEPTH_ATTACHMENT) {
         m_device.execute("Texture::create()", VK_QUEUE_GRAPHICS_BIT, wrapper::DebugLabelColor::GREEN,
                          [&](const CommandBuffer &cmd_buf) {
@@ -167,6 +165,7 @@ void Texture::update(const CommandBuffer &cmd_buf) {
         throw VulkanException("Error: vmaCreateBuffer failed!", result, m_name);
     }
 
+    // @TODO Explain in the docs why unifying the texture and buffer update mechanism is not worth the effort
     // @TODO Update this so it uses vmaCopyMemoryToAllocation!
 
     // Copy the texture data into the staging buffer

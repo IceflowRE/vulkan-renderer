@@ -76,9 +76,8 @@ public:
     Swapchain &operator=(Swapchain &&) = delete;
 
     /// Call vkAcquireNextImageKHR
-    /// @param timeout (``std::numeric_limits<std::uint64_t>::max()`` by default)
     /// @exception VulkanException vkAcquireNextImageKHR failed
-    void acquire_next_image(std::uint64_t timeout = std::numeric_limits<std::uint64_t>::max());
+    VkResult acquire_next_image();
 
     /// Change the image layout with a pipeline barrier to prepare for rendering
     /// @param cmd_buf The command buffer used for recording
@@ -119,11 +118,6 @@ public:
     [[nodiscard]] const auto &name() const {
         return m_name;
     }
-
-    /// Call vkQueuePresentKHR
-    /// @param img_index The image index
-    /// @exception VulkanException vkQueuePresentKHR call failed
-    void present(std::uint32_t img_index);
 
     void present();
 

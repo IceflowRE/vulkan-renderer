@@ -56,13 +56,19 @@ Swapchain::Swapchain(Swapchain &&other) noexcept : m_device(other.m_device) {
     m_name = std::move(other.m_name);
 }
 
-void Swapchain::acquire_next_image(const std::uint64_t timeout) {
-    if (const auto result = vkAcquireNextImageKHR(m_device.device(), m_swapchain, timeout, m_img_available->semaphore(),
-                                                  VK_NULL_HANDLE, &m_current_swapchain_img_index);
+VkResult Swapchain::acquire_next_image() {
+    if (auto result =
+            vkAcquireNextImageKHR(m_device.device(), m_swapchain, std::numeric_limits<std::uint64_t>::max(),
+                                  m_img_available->semaphore(), VK_NULL_HANDLE, &m_current_swapchain_img_index);
         result != VK_SUCCESS) {
-        if (result == VK_SUBOPTIMAL_KHR) {
-            // We need to recreate the swapchain.
+        if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
             setup_swapchain(m_current_extent, m_vsync_enabled);
+            // NOTE: After recreating the swapchain, we can't immediately attempt to acquire the next image index!
+            // Instead, we must poll and process window events, and skip frames in rendergraph until acquiring
+            // succeedes. If we realize that swapchain has become invalid in the present() call, we will recreate
+            // swapchain in the present() function and just continue. Because window events are then polled at the
+            // beginning of each frame, we then reach the acquire_next_image function again.
+            return result;
         } else {
             throw VulkanException("Error: vkAcquireNextImageKHR failed!", result);
         }
@@ -116,23 +122,6 @@ std::vector<VkImage> Swapchain::get_swapchain_images() {
         throw VulkanException("Error: vkGetSwapchainImagesKHR failed!", result);
     }
     return imgs;
-}
-
-void Swapchain::present(const std::uint32_t img_index) {
-    const auto present_info = make_info<VkPresentInfoKHR>({
-        .swapchainCount = 1,
-        .pSwapchains = &m_swapchain,
-        .pImageIndices = &img_index,
-    });
-    if (const auto result = vkQueuePresentKHR(m_device.present_queue(), &present_info); result != VK_SUCCESS) {
-        if (result == VK_SUBOPTIMAL_KHR || result == VK_ERROR_OUT_OF_DATE_KHR) {
-            // We need to recreate the swapchain
-            setup_swapchain(m_current_extent, m_vsync_enabled);
-        } else {
-            // Exception is thrown if result is not VK_SUCCESS but also not VK_SUBOPTIMAL_KHR
-            throw VulkanException("Error: vkQueuePresentKHR failed!", result);
-        }
-    }
 }
 
 void Swapchain::present() {
@@ -235,7 +224,8 @@ void Swapchain::setup_swapchain(const VkExtent2D requested_extent, const bool vs
 
         if (const auto result = vkCreateImageView(m_device.device(), &img_view_ci, nullptr, &m_img_views[img_index]);
             result != VK_SUCCESS) {
-            throw VulkanException("Error: vkCreateImageView failed!", result, "swapchain image view " + img_index);
+            throw VulkanException("Error: vkCreateImageView failed!", result,
+                                  "swapchain image view " + std::to_string(img_index));
         }
         m_device.set_debug_name(m_img_views[img_index], "swapchain image view");
     }

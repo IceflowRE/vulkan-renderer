@@ -11,6 +11,7 @@ RenderGraph::RenderGraph(Device &device, const PipelineCache &pipeline_cache)
       m_graphics_pipeline_builder(device, pipeline_cache), m_descriptor_set_layout_builder(device) {}
 
 void RenderGraph::acquire_swapchain_images() {
+    // @TODO Replace this with std::unordered_map<VkSwapchainKHR, std::weak_ptr<Swapchain>>
     std::unordered_set<Swapchain *> unique_swapchains;
 
     for (const auto &pass : m_graphics_passes) {
@@ -90,17 +91,33 @@ void RenderGraph::compile() {
 }
 
 void RenderGraph::fill_graphics_pass_rendering_info(GraphicsPass &pass) {
+    // @TODO Can we do this during rendergraph compilation?
+    // @TODO I think we only need to recall this method when swapchain is recreated. Since we invoke the
+    // swapchain->setup_swapchain method, the underlying smart pointer should not change at all! This means we can keep
+    // the weak_ptr to the swapchain writes, and just query the new data from them.
     pass.reset_rendering_info();
 
-    /// Fill the VkRenderingattachmentInfo for a color, depth, or stencil attachment
-    /// @param write_attachment The attachment this graphics pass writes to
-    /// @param clear_value The clear value
-    auto fill_rendering_info_for_attachment = [&](const std::weak_ptr<Texture> &write_attachment,
-                                                  const std::optional<VkClearValue> &clear_value) {
-        // @TODO Layout depends on format + usage!
-        const auto attachment = write_attachment.lock();
-        auto get_image_layout = [&]() {
-            switch (attachment->usage()) {
+    auto fill_rendering_attachment_info = [&](const VkImageView img_view, const VkImageLayout img_layout,
+                                              const std::optional<VkClearValue> &clear_value) {
+        return wrapper::make_info<VkRenderingAttachmentInfo>({
+            .imageView = img_view,
+            .imageLayout = img_layout,
+            // @TODO Support MSAA again!
+            .resolveMode = VK_RESOLVE_MODE_NONE,
+            .resolveImageView = nullptr,
+            .loadOp = clear_value ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD,
+            .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+            .clearValue = clear_value.value_or(VkClearValue{}),
+        });
+    };
+
+    // Step 1: Process all write attachments (color, depth, stencil) into VkRenderingInfo of the graphics pass
+    for (const auto &write_attachment : pass.m_texture_writes) {
+        const auto &attachment = write_attachment.first.lock();
+        const auto &clear_value = write_attachment.second;
+
+        auto get_image_layout = [&](const TextureUsage usage) {
+            switch (usage) {
             case TextureUsage::COLOR_ATTACHMENT:
             case TextureUsage::DEFAULT: {
                 return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -114,27 +131,10 @@ void RenderGraph::fill_graphics_pass_rendering_info(GraphicsPass &pass) {
             }
         };
 
-        // TODO: Support MSAA again!
-        return wrapper::make_info<VkRenderingAttachmentInfo>({
-            // TODO: Implement m_current_img_view when double/triple buffering and do this on init, not per-frame?
-            .imageView = attachment->image_view(),
-            .imageLayout = get_image_layout(),
-            .resolveMode = VK_RESOLVE_MODE_NONE,
-            .resolveImageView = nullptr,
-            // @TODO Is it safer to do loadOp = clear_value ? CLEAR : DONT_CARE
-            .loadOp = clear_value ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD,
-            .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-            .clearValue = clear_value.value_or(VkClearValue{}),
-        });
-    };
+        const auto rendering_info = fill_rendering_attachment_info(attachment->image_view(),
+                                                                   get_image_layout(attachment->usage()), clear_value);
 
-    // Step 1: Process all write attachments (color, depth, stencil) of the graphics pass into VkRenderingInfo
-    for (const auto &write_attachment : pass.m_texture_writes) {
-        const auto &attachment = write_attachment.first;
-        const auto &clear_value = write_attachment.second;
-        const auto rendering_info = fill_rendering_info_for_attachment(attachment, clear_value);
-
-        switch (attachment.lock()->usage()) {
+        switch (attachment->usage()) {
         case TextureUsage::COLOR_ATTACHMENT: {
             pass.m_color_attachments.push_back(rendering_info);
             break;
@@ -152,29 +152,15 @@ void RenderGraph::fill_graphics_pass_rendering_info(GraphicsPass &pass) {
         }
     }
 
-    /// Fill the VkRenderingAttachmentInfo for a swapchain
-    /// @param write_swapchain The swapchain to which this graphics pass writes to
-    /// @param clear_value The optional clear value for the swapchain image
-    auto fill_write_info_for_swapchain = [&](const std::weak_ptr<Swapchain> &write_swapchain,
-                                             const std::optional<VkClearValue> &clear_value) {
-        // TODO: Support MSAA again!
-        return wrapper::make_info<VkRenderingAttachmentInfo>({
-            // TODO: Does this mean we can do this on init now? Not on a per-frame basis?
-            .imageView = write_swapchain.lock()->current_swapchain_image_view(),
-            .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-            .resolveMode = VK_RESOLVE_MODE_NONE,
-            .resolveImageView = nullptr,
-            .loadOp = clear_value ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD,
-            .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-            .clearValue = clear_value.value_or(VkClearValue{}),
-        });
-    };
+    // @TODO There can be only one depth buffer and only one stencil buffer that is written to per pass!
+    // Validate this during rendergraph compilation!
 
-    // TODO: Step 2: Process all swapchain writes of the graphics pass into VkRenderingInfo
+    // TODO: Step 2: Process all swapchain writes into VkRenderingInfo of the graphics pass
     for (const auto &write_swapchain : pass.m_swapchain_writes) {
         const auto &swapchain = write_swapchain.first.lock();
         const auto &clear_value = write_swapchain.second;
-        pass.m_color_attachments.push_back(fill_write_info_for_swapchain(swapchain, clear_value));
+        pass.m_color_attachments.push_back(fill_rendering_attachment_info(
+            swapchain->current_swapchain_image_view(), VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, clear_value));
     }
 
     // @TODO If a pass has multiple color attachments those are multiple swapchains, does that mean we must group
@@ -185,7 +171,7 @@ void RenderGraph::fill_graphics_pass_rendering_info(GraphicsPass &pass) {
     pass.m_rendering_info = wrapper::make_info<VkRenderingInfo>({
         .renderArea =
             {
-                // @TODO Expose offset as parameter
+                // @TODO Expose offset and extent as parameter
                 .offset = {0, 0},
                 .extent = pass.m_extent,
             },
