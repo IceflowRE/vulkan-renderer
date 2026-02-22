@@ -1,6 +1,5 @@
 #include "inexor/vulkan-renderer/wrapper/pipelines/graphics_pipeline.hpp"
 
-#include "inexor/vulkan-renderer/render_graph.hpp"
 #include "inexor/vulkan-renderer/tools/exception.hpp"
 #include "inexor/vulkan-renderer/wrapper/device.hpp"
 #include "inexor/vulkan-renderer/wrapper/pipelines/pipeline_cache.hpp"

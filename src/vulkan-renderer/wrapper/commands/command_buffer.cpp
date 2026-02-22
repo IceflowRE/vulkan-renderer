@@ -35,7 +35,6 @@ CommandBuffer::CommandBuffer(CommandBuffer &&other) noexcept : m_device(other.m_
     m_command_buffer = std::exchange(other.m_command_buffer, VK_NULL_HANDLE);
     m_name = std::move(other.m_name);
     m_wait_fence = std::exchange(other.m_wait_fence, nullptr);
-    m_staging_bufs = std::move(other.m_staging_bufs);
 }
 
 const CommandBuffer &CommandBuffer::begin_command_buffer(const VkCommandBufferUsageFlags flags) const {
@@ -43,9 +42,6 @@ const CommandBuffer &CommandBuffer::begin_command_buffer(const VkCommandBufferUs
         .flags = flags,
     });
     vkBeginCommandBuffer(m_command_buffer, &begin_info);
-
-    // We must clear the staging buffers which could be left over from previous use of this command buffer
-    m_staging_bufs.clear();
     return *this;
 }
 
@@ -303,13 +299,6 @@ const CommandBuffer &CommandBuffer::copy_buffer_to_image(const VkBuffer buffer, 
                                             .depth = 1,
                                         },
                                 });
-}
-
-const CommandBuffer &CommandBuffer::copy_buffer_to_image(const void *data,
-                                                         const VkDeviceSize data_size, // NOLINT
-                                                         const VkImage dst_img, const VkBufferImageCopy &copy_region,
-                                                         const std::string &name) const {
-    return copy_buffer_to_image(create_staging_buffer(data, data_size, name), dst_img, copy_region);
 }
 
 const CommandBuffer &

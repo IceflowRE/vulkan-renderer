@@ -6,15 +6,12 @@
 #include "inexor/vulkan-renderer/tools/fps_limiter.hpp"
 #include "inexor/vulkan-renderer/tools/time_step.hpp"
 #include "inexor/vulkan-renderer/wrapper/debug_callback.hpp"
-#include "inexor/vulkan-renderer/wrapper/descriptors/descriptor_builder.hpp"
-#include "inexor/vulkan-renderer/wrapper/gpu_texture.hpp"
 #include "inexor/vulkan-renderer/wrapper/instance.hpp"
 #include "inexor/vulkan-renderer/wrapper/make_info.hpp"
 #include "inexor/vulkan-renderer/wrapper/pipelines/graphics_pipeline.hpp"
 #include "inexor/vulkan-renderer/wrapper/pipelines/pipeline_cache.hpp"
 #include "inexor/vulkan-renderer/wrapper/shader.hpp"
 #include "inexor/vulkan-renderer/wrapper/swapchains/swapchain.hpp"
-#include "inexor/vulkan-renderer/wrapper/uniform_buffer.hpp"
 #include "inexor/vulkan-renderer/wrapper/windows/surface.hpp"
 #include "inexor/vulkan-renderer/wrapper/windows/window.hpp"
 #include "octree_gpu_vertex.hpp"
@@ -25,16 +22,9 @@
 namespace inexor::vulkan_renderer::wrapper {
 // Forward declarations
 class Device;
-class GpuTexture;
 class Instance;
 class Shader;
-class UniformBuffer;
 } // namespace inexor::vulkan_renderer::wrapper
-
-namespace inexor::vulkan_renderer::wrapper::descriptors {
-// Forward declaration
-class ResourceDescriptor;
-} // namespace inexor::vulkan_renderer::wrapper::descriptors
 
 namespace inexor::vulkan_renderer::wrapper::swapchains {
 // Forward declaration
@@ -55,28 +45,19 @@ class RenderGraph;
 } // namespace inexor::vulkan_renderer
 
 // Using declarations
-using inexor::vulkan_renderer::BufferResource;
-using inexor::vulkan_renderer::BufferUsage;
-using inexor::vulkan_renderer::GraphicsStage;
 using inexor::vulkan_renderer::ImGUIOverlay;
-using inexor::vulkan_renderer::PhysicalStage;
 using inexor::vulkan_renderer::RenderGraph;
-using inexor::vulkan_renderer::TextureResource;
-using inexor::vulkan_renderer::TextureUsage;
 using inexor::vulkan_renderer::tools::Camera;
 using inexor::vulkan_renderer::tools::CameraMovement;
 using inexor::vulkan_renderer::tools::CameraType;
 using inexor::vulkan_renderer::tools::FPSLimiter;
 using inexor::vulkan_renderer::tools::TimeStep;
 using inexor::vulkan_renderer::wrapper::Device;
-using inexor::vulkan_renderer::wrapper::GpuTexture;
 using inexor::vulkan_renderer::wrapper::Instance;
 using inexor::vulkan_renderer::wrapper::Shader;
-using inexor::vulkan_renderer::wrapper::UniformBuffer;
 using inexor::vulkan_renderer::wrapper::VulkanDebugUtilsCallback;
 using inexor::vulkan_renderer::wrapper::commands::CommandBuffer;
 using inexor::vulkan_renderer::wrapper::descriptors::DescriptorBuilder;
-using inexor::vulkan_renderer::wrapper::descriptors::ResourceDescriptor;
 using inexor::vulkan_renderer::wrapper::pipelines::GraphicsPipeline;
 using inexor::vulkan_renderer::wrapper::pipelines::PipelineCache;
 using inexor::vulkan_renderer::wrapper::swapchains::Swapchain;
@@ -101,7 +82,6 @@ protected:
     std::unique_ptr<VulkanDebugUtilsCallback> m_dbg_callback;
     std::unique_ptr<WindowSurface> m_surface;
     std::unique_ptr<Device> m_device;
-    std::unique_ptr<RenderGraph> m_render_graph;
 
     // RENDERGRAPH2
     std::shared_ptr<vulkan_renderer::render_graph::RenderGraph> m_render_graph2;
@@ -125,12 +105,7 @@ protected:
     // @TODO Swapchains will be decoupled from rendergraph again in the future
     // The rendergraph will be able to handle an arbitrary number of windows and swapchains.
 
-    std::unique_ptr<Swapchain> m_swapchain;
     std::unique_ptr<Window> m_window;
-    TextureResource *m_back_buffer{nullptr};
-    BufferResource *m_index_buffer{nullptr};
-    BufferResource *m_vertex_buffer{nullptr};
-    std::vector<ResourceDescriptor> m_descriptors;
     std::vector<OctreeGpuVertex> m_octree_vertices;
     std::vector<std::uint32_t> m_octree_indices;
     std::vector<Shader> m_shaders;
@@ -139,7 +114,6 @@ protected:
     std::unique_ptr<ImGUIOverlay> m_imgui_overlay;
     bool m_window_resized{false};
     FPSLimiter m_fps_limiter;
-    std::vector<UniformBuffer> m_uniform_buffers;
 
 public:
     ~ExampleAppBase();

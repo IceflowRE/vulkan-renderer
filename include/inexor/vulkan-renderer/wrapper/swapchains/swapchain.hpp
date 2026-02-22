@@ -80,13 +80,6 @@ public:
     /// @exception VulkanException vkAcquireNextImageKHR failed
     void acquire_next_image(std::uint64_t timeout = std::numeric_limits<std::uint64_t>::max());
 
-    /// Call vkAcquireNextImageKHR
-    /// @param timeout (``std::numeric_limits<std::uint64_t>::max()`` by default)
-    /// @exception VulkanException vkAcquireNextImageKHR call failed
-    /// @return The index of the next image
-    [[nodiscard]] std::uint32_t
-    acquire_next_image_index(std::uint64_t timeout = std::numeric_limits<std::uint64_t>::max());
-
     /// Change the image layout with a pipeline barrier to prepare for rendering
     /// @param cmd_buf The command buffer used for recording
     void change_image_layout_to_prepare_for_rendering(const CommandBuffer &cmd_buf);

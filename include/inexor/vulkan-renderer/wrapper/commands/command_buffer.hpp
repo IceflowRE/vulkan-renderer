@@ -3,7 +3,6 @@
 #include "inexor/vulkan-renderer/render-graph/buffer.hpp"
 #include "inexor/vulkan-renderer/render-graph/image.hpp"
 #include "inexor/vulkan-renderer/tools/exception.hpp"
-#include "inexor/vulkan-renderer/wrapper/gpu_memory_buffer.hpp"
 #include "inexor/vulkan-renderer/wrapper/pipelines/graphics_pipeline.hpp"
 #include "inexor/vulkan-renderer/wrapper/synchronization/fence.hpp"
 
@@ -44,45 +43,10 @@ private:
     std::string m_name;
     std::unique_ptr<Fence> m_wait_fence;
 
-    /// The staging buffers which are maybe used in the command buffer
-    /// This vector of staging buffers will be cleared every time ``begin_command_buffer`` is called
-    /// @note We are not recycling staging buffers. Once they are used and the command buffer handle has reached the end
-    /// of its lifetime, the staging bufers will be cleared. We trust Vulkan Memory Allocator (VMA) in managing the
-    /// memory for staging buffers.
-    mutable std::vector<GPUMemoryBuffer> m_staging_bufs;
-
     /// Call vkBeginCommandBuffer
     /// @param flags The command buffer usage flags, ``VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT`` by default
     const CommandBuffer & // NOLINT
     begin_command_buffer(VkCommandBufferUsageFlags flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT) const;
-
-    /// Create a new staging buffer which will be stored internally for a copy operation
-    /// @param data A raw pointer to the data to copy (must not be ``nullptr``)
-    /// @param data_size The size of the data to copy (must be greater than ``0``)
-    /// @param name The internal name of the staging buffer (must not be empty)
-    /// @return A VkBuffer which contains the staging buffer data
-    [[nodiscard]] VkBuffer create_staging_buffer(const void *data, const VkDeviceSize data_size,
-                                                 const std::string &name) const {
-        assert(data);
-        assert(data_size > 0);
-        assert(!name.empty());
-
-        // Create a staging buffer for the copy operation and keep it until the CommandBuffer exceeds its lifetime
-        m_staging_bufs.emplace_back(m_device, name, data_size, data, data_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                                    VMA_MEMORY_USAGE_CPU_ONLY);
-
-        return m_staging_bufs.back().buffer();
-    }
-
-    /// Create a new staging buffer which will be stored internally for a copy operation
-    /// @tparam The data type of the staging buffer
-    /// @param data A std::span of the source data
-    /// @param name The internal name of the staging buffer (must not be empty)
-    /// @return The staging buffer's VkBuffer
-    template <typename DataType>
-    [[nodiscard]] VkBuffer create_staging_buffer(const std::span<const DataType> data, const std::string &name) const {
-        return create_staging_buffer(data.data(), static_cast<VkDeviceSize>(sizeof(data) * data.size()), name);
-    }
 
     /// Call vkEndCommandBuffer
     /// @return A const reference to the this pointer (allowing method calls to be chained)
@@ -298,22 +262,6 @@ public:
     const CommandBuffer &copy_buffer_to_image(const void *data, const VkDeviceSize data_size, // NOLINT
                                               VkImage dst_img, const VkBufferImageCopy &copy_region,
                                               const std::string &name) const;
-
-    /// Call vkCmdCopyBuffer
-    /// @param data A std::span of the source data
-    /// @note A staging buffer for the copy operation will be created automatically from ``data``
-    /// @param dst_img The destination image (must not be ``VK_NULL_HANDLE``)
-    /// @note The destination image is always expected to be in layout ``VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL`` for the
-    /// copy operation
-    /// @param name The internal name of the staging buffer (must not be empty)
-    /// @return A const reference to the dereferenced ``this`` pointer (allowing for method calls to be chained)
-    template <typename DataType>
-    const CommandBuffer &copy_buffer_to_image(const std::span<const DataType> data, // NOLINT
-                                              VkImage dst_img, const VkBufferImageCopy &copy_region,
-                                              const std::string &name) const {
-        return copy_buffer_to_image(create_staging_buffer<DataType>(data, name), dst_img,
-                                    static_cast<VkDeviceSize>(sizeof(data) * data.size()), copy_region, name);
-    }
 
     /// Call vkCmdCopyBufferToImage
     /// @param src_buffer The source buffer

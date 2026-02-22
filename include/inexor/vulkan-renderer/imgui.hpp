@@ -5,8 +5,7 @@
 #include "inexor/vulkan-renderer/render-graph/graphics_pass.hpp"
 #include "inexor/vulkan-renderer/render-graph/render_graph.hpp"
 #include "inexor/vulkan-renderer/render-graph/texture.hpp"
-#include "inexor/vulkan-renderer/render_graph.hpp"
-#include "inexor/vulkan-renderer/wrapper/descriptors/descriptor.hpp"
+#include "inexor/vulkan-renderer/wrapper/pipelines/graphics_pipeline.hpp"
 
 #include <glm/vec2.hpp>
 #include <imgui.h>
@@ -17,7 +16,6 @@
 namespace inexor::vulkan_renderer::wrapper {
 // Forward declarations
 class Device;
-class GpuTexture;
 class Shader;
 } // namespace inexor::vulkan_renderer::wrapper
 
@@ -31,11 +29,11 @@ namespace inexor::vulkan_renderer {
 // Using declaration
 using render_graph::GraphicsPass;
 using wrapper::Device;
+using wrapper::pipelines::GraphicsPipeline;
 using wrapper::swapchains::Swapchain;
 
 class ImGUIOverlay {
     const Device &m_device;
-    const Swapchain &m_swapchain;
     float m_scale{1.0f};
 
     // RENDERGRAPH2
@@ -53,15 +51,10 @@ class ImGUIOverlay {
     std::shared_ptr<GraphicsPipeline> m_imgui_pipeline2;
     // The user-defined update of ImGui data
     std::function<void()> m_on_update_user_imgui_data;
+    std::weak_ptr<Swapchain> m_swapchain;
 
-    BufferResource *m_index_buffer{nullptr};
-    BufferResource *m_vertex_buffer{nullptr};
-    GraphicsStage *m_stage{nullptr};
-
-    std::unique_ptr<wrapper::GpuTexture> m_imgui_texture;
     std::shared_ptr<wrapper::Shader> m_vertex_shader;
     std::shared_ptr<wrapper::Shader> m_fragment_shader;
-    std::unique_ptr<wrapper::descriptors::ResourceDescriptor> m_descriptor;
     std::vector<std::uint32_t> m_index_data;
     std::vector<ImDrawVert> m_vertex_data;
 
@@ -79,8 +72,7 @@ public:
     /// @param back_buffer A pointer to the target of the ImGUI rendering
     /// @param render_graph2
     /// @param
-    ImGUIOverlay(const Device &device, const Swapchain &swapchain, std::weak_ptr<Swapchain> swapchain2,
-                 RenderGraph *render_graph, TextureResource *back_buffer,
+    ImGUIOverlay(const Device &device, std::weak_ptr<Swapchain> swapchain2,
                  std::weak_ptr<render_graph::Texture> back_buffer2,
                  std::shared_ptr<render_graph::RenderGraph> render_graph2,
                  std::function<void()> on_update_user_imgui_data);

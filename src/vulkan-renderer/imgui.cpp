@@ -1,18 +1,14 @@
 #include "inexor/vulkan-renderer/imgui.hpp"
 
-#include "inexor/vulkan-renderer/wrapper/cpu_texture.hpp"
-#include "inexor/vulkan-renderer/wrapper/descriptors/descriptor_builder.hpp"
-#include "inexor/vulkan-renderer/wrapper/gpu_texture.hpp"
 #include "inexor/vulkan-renderer/wrapper/shader.hpp"
 
 namespace inexor::vulkan_renderer {
 
-ImGUIOverlay::ImGUIOverlay(const wrapper::Device &device, const wrapper::Swapchain &swapchain,
-                           std::weak_ptr<Swapchain> swapchain2, RenderGraph *render_graph, TextureResource *back_buffer,
+ImGUIOverlay::ImGUIOverlay(const wrapper::Device &device, std::weak_ptr<Swapchain> swapchain2,
                            std::weak_ptr<render_graph::Texture> back_buffer2,
                            std::shared_ptr<render_graph::RenderGraph> render_graph2,
                            std::function<void()> on_update_user_imgui_data)
-    : m_device(device), m_swapchain(swapchain), m_on_update_user_imgui_data(std::move(on_update_user_imgui_data)) {
+    : m_device(device), m_swapchain(swapchain2), m_on_update_user_imgui_data(std::move(on_update_user_imgui_data)) {
     spdlog::trace("Creating ImGUI context");
     ImGui::CreateContext();
 
@@ -57,7 +53,6 @@ ImGUIOverlay::ImGUIOverlay(const wrapper::Device &device, const wrapper::Swapcha
 
     if (font == nullptr || m_font_texture_data == nullptr) {
         spdlog::error("Unable to load font {}. Falling back to error texture", FONT_FILE_PATH);
-        m_imgui_texture = std::make_unique<wrapper::GpuTexture>(m_device, wrapper::CpuTexture());
 
         // RENDERGRAPH2
         // @TODO: generate error Texture!
@@ -72,10 +67,6 @@ ImGUIOverlay::ImGUIOverlay(const wrapper::Device &device, const wrapper::Swapcha
                         static_cast<VkDeviceSize>(m_font_texture_height) *
                         static_cast<VkDeviceSize>(FONT_TEXTURE_CHANNELS);
 
-        m_imgui_texture = std::make_unique<wrapper::GpuTexture>(
-            m_device, m_font_texture_data, m_upload_size, m_font_texture_width, m_font_texture_height,
-            FONT_TEXTURE_CHANNELS, FONT_MIP_LEVELS, "ImGUI font texture");
-
         m_imgui_texture2 = render_graph2->add_texture(
             "ImGui|Texture", render_graph::TextureUsage::DEFAULT, VK_FORMAT_R8G8B8A8_UNORM, m_font_texture_width,
             m_font_texture_height, FONT_TEXTURE_CHANNELS, VK_SAMPLE_COUNT_1_BIT, [&]() {
@@ -87,16 +78,6 @@ ImGUIOverlay::ImGUIOverlay(const wrapper::Device &device, const wrapper::Swapcha
                 }
             });
     }
-
-    // Create an instance of the resource descriptor builder.
-    // This allows us to make resource descriptors with the help of a builder pattern.
-    wrapper::descriptors::DescriptorBuilder descriptor_builder(m_device);
-
-    // Make use of the builder to create a resource descriptor for the combined image sampler.
-    m_descriptor = std::make_unique<wrapper::descriptors::ResourceDescriptor>(
-        descriptor_builder.add_combined_image_sampler(m_imgui_texture->sampler(), m_imgui_texture->image_view(), 0)
-            .build("ImGUI"));
-
     // RENDERGRAPH2
     render_graph2->add_resource_descriptor(
         [&](vulkan_renderer::wrapper::descriptors::DescriptorSetLayoutBuilder &builder) {
@@ -127,7 +108,8 @@ ImGUIOverlay::ImGUIOverlay(const wrapper::Device &device, const wrapper::Swapcha
     });
 
     // RENDERGRAPH2
-    render_graph2->add_graphics_pipeline([&](GraphicsPipelineBuilder &builder) {
+    render_graph2->add_graphics_pipeline([&](render_graph::GraphicsPipelineBuilder &builder) {
+        const auto swapchain = m_swapchain.lock();
         m_imgui_pipeline2 = builder
                                 .set_vertex_input_bindings({
                                     {
@@ -170,13 +152,13 @@ ImGUIOverlay::ImGUIOverlay(const wrapper::Device &device, const wrapper::Swapcha
                                 // @TODO Default this as well
                                 .set_multisampling(VK_SAMPLE_COUNT_1_BIT, 1.0f)
                                 .add_default_color_blend_attachment()
-                                .add_color_attachment_format(m_swapchain.image_format())
+                                .add_color_attachment_format(swapchain->image_format())
                                 .set_dynamic_states({
                                     VK_DYNAMIC_STATE_VIEWPORT,
                                     VK_DYNAMIC_STATE_SCISSOR,
                                 })
-                                .set_scissor(m_swapchain.extent())
-                                .set_viewport(m_swapchain.extent())
+                                .set_scissor(swapchain->extent())
+                                .set_viewport(swapchain->extent())
                                 // @TODO Rename to use_shader()
                                 .add_shader(m_vertex_shader)
                                 .add_shader(m_fragment_shader)
@@ -243,65 +225,6 @@ ImGUIOverlay::ImGUIOverlay(const wrapper::Device &device, const wrapper::Swapcha
                 }
             })
             .build("ImGui", render_graph::DebugLabelColor::BLUE));
-
-    m_index_buffer = render_graph->add<BufferResource>("imgui index buffer", BufferUsage::INDEX_BUFFER);
-    m_vertex_buffer = render_graph->add<BufferResource>("imgui vertex buffer", BufferUsage::VERTEX_BUFFER);
-    m_vertex_buffer->add_vertex_attribute(VK_FORMAT_R32G32_SFLOAT, offsetof(ImDrawVert, pos));
-    m_vertex_buffer->add_vertex_attribute(VK_FORMAT_R32G32_SFLOAT, offsetof(ImDrawVert, uv));
-    m_vertex_buffer->add_vertex_attribute(VK_FORMAT_R8G8B8A8_UNORM, offsetof(ImDrawVert, col));
-    m_vertex_buffer->set_element_size(sizeof(ImDrawVert));
-
-    m_stage = render_graph->add<GraphicsStage>("imgui stage");
-    m_stage->writes_to(back_buffer);
-    m_stage->reads_from(m_index_buffer);
-    m_stage->reads_from(m_vertex_buffer);
-    m_stage->bind_buffer(m_vertex_buffer, 0);
-    m_stage->uses_shader(*m_vertex_shader);
-    m_stage->uses_shader(*m_fragment_shader);
-    m_stage->add_descriptor_layout(m_descriptor->descriptor_set_layout());
-
-    // Setup push constant range for global translation and scale.
-    m_stage->add_push_constant_range({
-        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-        .offset = 0,
-        .size = sizeof(PushConstBlock),
-    });
-
-    // Setup blend attachment.
-    m_stage->set_blend_attachment({
-        .blendEnable = VK_TRUE,
-        .srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
-        .dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
-        .colorBlendOp = VK_BLEND_OP_ADD,
-        .srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE,
-        .dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
-        .alphaBlendOp = VK_BLEND_OP_ADD,
-    });
-
-    m_stage->set_on_record([&](const PhysicalStage &physical, const wrapper::commands::CommandBuffer &cmd_buf) {
-        ImDrawData *imgui_draw_data = ImGui::GetDrawData();
-        if (imgui_draw_data == nullptr) {
-            return;
-        }
-        const ImGuiIO &io = ImGui::GetIO();
-        m_push_const_block.scale = glm::vec2(2.0f / io.DisplaySize.x, 2.0f / io.DisplaySize.y);
-        m_push_const_block.translate = glm::vec2(-1.0f);
-        cmd_buf.bind_descriptor_sets(m_descriptor->descriptor_sets(), physical.m_pipeline->pipeline_layout())
-            .push_constants(physical.m_pipeline->pipeline_layout(), VK_SHADER_STAGE_VERTEX_BIT, sizeof(PushConstBlock),
-                            &m_push_const_block);
-
-        std::uint32_t index_offset = 0;
-        std::int32_t vertex_offset = 0;
-        for (std::size_t i = 0; i < imgui_draw_data->CmdListsCount; i++) {
-            const ImDrawList *cmd_list = imgui_draw_data->CmdLists[i]; // NOLINT
-            for (std::int32_t j = 0; j < cmd_list->CmdBuffer.Size; j++) {
-                const ImDrawCmd &draw_cmd = cmd_list->CmdBuffer[j];
-                vkCmdDrawIndexed(cmd_buf.cmd_buffer(), draw_cmd.ElemCount, 1, index_offset, vertex_offset, 0);
-                index_offset += draw_cmd.ElemCount;
-            }
-            vertex_offset += cmd_list->VtxBuffer.Size;
-        }
-    });
 }
 
 ImGUIOverlay::~ImGUIOverlay() {
@@ -322,10 +245,6 @@ void ImGUIOverlay::update() {
         m_index_data.insert(m_index_data.end(), cmd_list->IdxBuffer.Data,
                             cmd_list->IdxBuffer.Data + cmd_list->IdxBuffer.Size);
     }
-
-    // Upload buffers every frame
-    m_vertex_buffer->upload_data(m_vertex_data);
-    m_index_buffer->upload_data(m_index_data);
 
     m_vertex_buffer2.lock()->request_update(m_vertex_data);
     m_index_buffer2.lock()->request_update(m_index_data);

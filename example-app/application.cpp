@@ -12,8 +12,6 @@
 #include "inexor/vulkan-renderer/tools/enumerate.hpp"
 #include "inexor/vulkan-renderer/tools/exception.hpp"
 #include "inexor/vulkan-renderer/tools/random.hpp"
-#include "inexor/vulkan-renderer/wrapper/cpu_texture.hpp"
-#include "inexor/vulkan-renderer/wrapper/descriptors/descriptor_builder.hpp"
 #include "inexor/vulkan-renderer/wrapper/instance.hpp"
 
 #include <CLI/CLI.hpp>
@@ -383,9 +381,6 @@ ExampleApp::ExampleApp(int argc, char **argv) {
     m_device = std::make_unique<Device>(*m_instance, m_surface->surface(), physical_device, required_features,
                                         required_extensions);
 
-    m_swapchain = std::make_unique<Swapchain>(*m_device, "Default Swapchain", m_surface->surface(), m_window->width(),
-                                              m_window->height(), m_vsync_enabled);
-
     m_swapchain2 = std::make_shared<Swapchain>(*m_device, "Default Swapchain", m_surface->surface(), m_window->width(),
                                                m_window->height(), m_vsync_enabled);
 
@@ -395,18 +390,6 @@ ExampleApp::ExampleApp(int argc, char **argv) {
     m_camera->set_rotation_speed(0.5f);
 
     load_shaders();
-
-    m_uniform_buffers.emplace_back(*m_device, "matrices uniform buffer", sizeof(UniformBufferObject));
-
-    // Create an instance of the resource descriptor builder.
-    // This allows us to make resource descriptors with the help of a builder pattern.
-    DescriptorBuilder descriptor_builder(*m_device);
-
-    // Make use of the builder to create a resource descriptor for the uniform buffer.
-    m_descriptors.emplace_back(
-        descriptor_builder.add_uniform_buffer<UniformBufferObject>(m_uniform_buffers[0].buffer(), 0)
-            .build("Default uniform buffer"));
-
     load_octree_geometry(true);
     generate_octree_indices();
 
@@ -428,30 +411,7 @@ void ExampleApp::render_frame() {
         return;
     }
 
-    const std::array<VkPipelineStageFlags, 1> stage_mask{VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-
-#define INEXOR_USE_OLD_RENDERER 0
-
-#if INEXOR_USE_OLD_RENDERER
-
-    const auto image_index = m_swapchain->acquire_next_image_index();
-    // Wait on the swapchain's image-available semaphore
-    const VkSemaphore image_available_semaphore = m_swapchain->image_available_semaphore();
-    const std::span<const VkSemaphore> wait_semaphores{&image_available_semaphore, 1};
-
-    m_device->execute(
-        "render", VK_QUEUE_GRAPHICS_BIT, wrapper::DebugLabelColor::RED,
-        [&](const CommandBuffer &cmd_buf) {
-            //
-            m_render_graph->render(image_index, cmd_buf);
-        },
-        wait_semaphores);
-
-    m_swapchain->present(image_index);
-
-#else
     m_render_graph2->render();
-#endif
 
     if (auto fps_value = m_fps_limiter.get_fps()) {
         m_window->set_title("Inexor Vulkan API renderer demo - " + std::to_string(*fps_value) + " FPS");
@@ -468,21 +428,13 @@ void ExampleApp::recreate_swapchain() {
     // This seems to be an issue on Linux only though
     auto [window_width, window_height] = m_window->get_framebuffer_size();
 
-    // TODO: This should be abstracted itno a method of the Window wrapper.
     // TODO: This is quite naive, we don't need to recompile the whole render graph on swapchain invalidation.
-    m_render_graph.reset();
-    // Recreate the swapchain
-    m_swapchain->setup_swapchain(
-        VkExtent2D{static_cast<std::uint32_t>(window_width), static_cast<std::uint32_t>(window_height)},
-        m_vsync_enabled);
 
     // RENDERGRAPH2
     // Recreate the swapchain
     m_swapchain2->setup_swapchain(
         VkExtent2D{static_cast<std::uint32_t>(window_width), static_cast<std::uint32_t>(window_height)},
         m_vsync_enabled);
-
-    m_render_graph = std::make_unique<RenderGraph>(*m_device, *m_swapchain);
 
     // RENDERGRAPH2
     m_render_graph2 =
@@ -495,12 +447,10 @@ void ExampleApp::recreate_swapchain() {
     m_imgui_overlay.reset();
 
     // RENDERGRAPH2
-    m_imgui_overlay = std::make_unique<ImGUIOverlay>(*m_device, *m_swapchain, m_swapchain2, m_render_graph.get(),
-                                                     m_back_buffer, m_back_buffer2, m_render_graph2, [&]() {
-                                                         // RENDERGRAPH2
-                                                         update_imgui_overlay();
-                                                     });
-    m_render_graph->compile(m_back_buffer);
+    m_imgui_overlay = std::make_unique<ImGUIOverlay>(*m_device, m_swapchain2, m_back_buffer2, m_render_graph2, [&]() {
+        // RENDERGRAPH2
+        update_imgui_overlay();
+    });
 
     // RENDERGRAPH2
     m_render_graph2->compile();
@@ -511,22 +461,15 @@ void ExampleApp::setup_render_graph() {
     // @TODO Where to place this? DO we need this here?
     m_render_graph2->reset();
 
-    m_back_buffer = m_render_graph->add<TextureResource>("back buffer", TextureUsage::BACK_BUFFER);
-    m_back_buffer->set_format(m_swapchain->image_format());
     // RENDERGRAPH2
     m_back_buffer2 = m_render_graph2->add_texture(
-        "back buffer", vulkan_renderer::render_graph::TextureUsage::COLOR_ATTACHMENT, m_swapchain->image_format(),
-        m_swapchain->extent().width, m_swapchain->extent().height);
+        "back buffer", vulkan_renderer::render_graph::TextureUsage::COLOR_ATTACHMENT, m_swapchain2->image_format(),
+        m_swapchain2->extent().width, m_swapchain2->extent().height);
 
-    auto *depth_buffer = m_render_graph->add<TextureResource>("depth buffer", TextureUsage::DEPTH_STENCIL_BUFFER);
-    depth_buffer->set_format(VK_FORMAT_D32_SFLOAT_S8_UINT);
     // RENDERGRAPH2
     m_depth_buffer2 = m_render_graph2->add_texture(
         "depth buffer", vulkan_renderer::render_graph::TextureUsage::DEPTH_ATTACHMENT, VK_FORMAT_D32_SFLOAT_S8_UINT,
-        m_swapchain->extent().width, m_swapchain->extent().height);
-
-    m_index_buffer = m_render_graph->add<BufferResource>("index buffer", BufferUsage::INDEX_BUFFER);
-    m_index_buffer->upload_data(m_octree_indices);
+        m_swapchain2->extent().width, m_swapchain2->extent().height);
 
     // RENDERGRAPH2
     m_index_buffer2 =
@@ -536,11 +479,6 @@ void ExampleApp::setup_render_graph() {
                 m_index_buffer2.lock()->request_update(m_octree_indices);
             }
         });
-
-    m_vertex_buffer = m_render_graph->add<BufferResource>("vertex buffer", BufferUsage::VERTEX_BUFFER);
-    m_vertex_buffer->add_vertex_attribute(VK_FORMAT_R32G32B32_SFLOAT, offsetof(OctreeGpuVertex, position)); // NOLINT
-    m_vertex_buffer->add_vertex_attribute(VK_FORMAT_R32G32B32_SFLOAT, offsetof(OctreeGpuVertex, color));    // NOLINT
-    m_vertex_buffer->upload_data(m_octree_vertices);
 
     // RENDERGRAPH2
     m_vertex_buffer2 =
@@ -593,7 +531,7 @@ void ExampleApp::setup_render_graph() {
         std::make_shared<Shader>(*m_device, VK_SHADER_STAGE_FRAGMENT_BIT, "Octree", "shaders/main.frag.spv");
 
     // RENDERGRAPH2
-    m_render_graph2->add_graphics_pipeline([&](GraphicsPipelineBuilder &builder) {
+    m_render_graph2->add_graphics_pipeline([&](wrapper::pipelines::GraphicsPipelineBuilder &builder) {
         // RENDERGRAPH2
         m_octree_pipeline2 = builder.add_shader(m_vertex_shader2)
                                  .add_shader(m_fragment_shader2)
@@ -661,35 +599,6 @@ void ExampleApp::setup_render_graph() {
                     .draw_indexed(static_cast<std::uint32_t>(m_octree_indices.size()));
             })
             .build("Octree", vulkan_renderer::render_graph::DebugLabelColor::GREEN));
-
-    auto *main_stage = m_render_graph->add<GraphicsStage>("main stage");
-    main_stage->writes_to(m_back_buffer);
-    main_stage->writes_to(depth_buffer);
-    main_stage->reads_from(m_index_buffer);
-    main_stage->reads_from(m_vertex_buffer);
-    main_stage->bind_buffer(m_vertex_buffer, 0);
-    main_stage->set_clears_screen(true);
-    main_stage->set_depth_options(true, true);
-    main_stage->set_on_record([&](const PhysicalStage &physical, const CommandBuffer &cmd_buf) {
-        cmd_buf.bind_descriptor_sets(m_descriptors[0].descriptor_sets(), physical.m_pipeline->pipeline_layout());
-        cmd_buf.draw_indexed(static_cast<std::uint32_t>(m_octree_indices.size()));
-    });
-
-    for (const auto &shader : m_shaders) {
-        main_stage->uses_shader(shader);
-    }
-
-    main_stage->add_descriptor_layout(m_descriptors[0].descriptor_set_layout());
-}
-
-void ExampleApp::update_uniform_buffers() {
-    m_ubo.model = glm::mat4(1.0f);
-    m_ubo.view = m_camera->view_matrix();
-    m_ubo.proj = m_camera->perspective_matrix();
-    m_ubo.proj[1][1] *= -1;
-
-    // TODO: Embed this into the render graph.
-    m_uniform_buffers[0].update(&m_ubo, sizeof(m_ubo));
 }
 
 void ExampleApp::update_imgui_overlay() {
@@ -701,7 +610,7 @@ void ExampleApp::update_imgui_overlay() {
     io.MouseDown[0] = m_input->kbm_data().is_mouse_button_pressed(GLFW_MOUSE_BUTTON_LEFT);
     io.MouseDown[1] = m_input->kbm_data().is_mouse_button_pressed(GLFW_MOUSE_BUTTON_RIGHT);
     io.DisplaySize =
-        ImVec2(static_cast<float>(m_swapchain->extent().width), static_cast<float>(m_swapchain->extent().height));
+        ImVec2(static_cast<float>(m_swapchain2->extent().width), static_cast<float>(m_swapchain2->extent().height));
 
     ImGui::NewFrame();
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0);
@@ -793,15 +702,12 @@ void ExampleApp::run() {
         m_window->poll();
         if (m_fps_limiter.is_next_frame_allowed()) {
             m_input->update_gamepad_data();
-            update_uniform_buffers();
             update_imgui_overlay();
             render_frame();
             process_input();
             if (m_input->kbm_data().was_key_pressed_once(GLFW_KEY_N)) {
                 load_octree_geometry(false);
                 generate_octree_indices();
-                m_index_buffer->upload_data(m_octree_indices);
-                m_vertex_buffer->upload_data(m_octree_vertices);
             }
             m_camera->update(m_time_passed);
             m_time_passed = m_stopwatch.time_step();

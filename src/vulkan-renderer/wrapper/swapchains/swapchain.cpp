@@ -71,21 +71,6 @@ void Swapchain::acquire_next_image(const std::uint64_t timeout) {
     m_current_swapchain_img_view = m_img_views[m_current_swapchain_img_index];
 }
 
-std::uint32_t Swapchain::acquire_next_image_index(const std::uint64_t timeout) {
-    std::uint32_t img_index = 0;
-    if (const auto result = vkAcquireNextImageKHR(m_device.device(), m_swapchain, timeout, m_img_available->semaphore(),
-                                                  VK_NULL_HANDLE, &img_index);
-        result != VK_SUCCESS) {
-        if (result == VK_SUBOPTIMAL_KHR) {
-            // We need to recreate the swapchain.
-            setup_swapchain(m_current_extent, m_vsync_enabled);
-        } else {
-            throw VulkanException("Error: vkAcquireNextImageKHR failed!", result);
-        }
-    }
-    return img_index;
-}
-
 void Swapchain::change_image_layout_to_prepare_for_rendering(const CommandBuffer &cmd_buf) {
     // NOTE: It could be that inside of rendergraph, multiple passes are writing to one swapchain image.
     // @TODO How to handle this correctly?

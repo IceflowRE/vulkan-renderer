@@ -9,11 +9,6 @@
 #include <utility>
 #include <vector>
 
-namespace inexor::vulkan_renderer {
-// Forward declaration
-class RenderGraph;
-} // namespace inexor::vulkan_renderer
-
 namespace inexor::vulkan_renderer::wrapper {
 // Forward declaration
 class Device;
@@ -41,8 +36,6 @@ enum class DescriptorType {
 
 /// A builder for descriptors
 class DescriptorSetLayoutBuilder {
-    friend class RenderGraph;
-
 private:
     const Device &m_device;
     /// All instances of DescriptorSetLayoutBuilder have the same DescriptorSetLayoutCache instance!

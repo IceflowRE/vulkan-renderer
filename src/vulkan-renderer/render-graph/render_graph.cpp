@@ -11,22 +11,20 @@ RenderGraph::RenderGraph(Device &device, const PipelineCache &pipeline_cache)
       m_graphics_pipeline_builder(device, pipeline_cache), m_descriptor_set_layout_builder(device) {}
 
 void RenderGraph::acquire_swapchain_images() {
-    // Use an std::unordered_set to make sure every swapchain image available semaphore is in there only once!
-    std::unordered_set<VkSemaphore> unique_semaphores;
-    m_swapchains_imgs_available.clear();
+    std::unordered_set<Swapchain *> unique_swapchains;
 
-    // @TODO For now, we just assume that each swapchain which exist is written to by only one pass. In reality, this
-    // might necessarily be the case. How to handle this? Which code part should track swapchain state? We could either
-    // rule out this case during rendergraph compilation, or we accumulate all unique swapchains which are being written
-    // to, and acquire images per render() invocation only once.
-    // @TODO Should we call vkAcquireNextImageKHR in parallel if we have multiple swapchains?
     for (const auto &pass : m_graphics_passes) {
-        for (const auto &swapchain : pass->m_swapchain_writes) {
-            swapchain.first.lock()->acquire_next_image();
-            unique_semaphores.emplace(swapchain.first.lock()->image_available_semaphore());
+        for (const auto &sc : pass->m_swapchain_writes) {
+            unique_swapchains.insert(sc.first.lock().get());
         }
     }
-    m_swapchains_imgs_available = std::vector<VkSemaphore>(unique_semaphores.begin(), unique_semaphores.end());
+
+    m_swapchains_imgs_available.clear();
+
+    for (auto *swapchain : unique_swapchains) {
+        swapchain->acquire_next_image();
+        m_swapchains_imgs_available.push_back(swapchain->image_available_semaphore());
+    }
 }
 
 std::weak_ptr<Buffer> RenderGraph::add_buffer(std::string name, const BufferType type,

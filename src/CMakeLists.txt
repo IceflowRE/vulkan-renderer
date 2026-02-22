@@ -1,6 +1,5 @@
 set(INEXOR_SOURCE_FILES
     vulkan-renderer/imgui.cpp
-    vulkan-renderer/render_graph.cpp
 
     vulkan-renderer/input/gamepad_data.cpp
     vulkan-renderer/input/input.cpp
@@ -26,24 +25,15 @@ set(INEXOR_SOURCE_FILES
 
     vulkan-renderer/tools/allocators/pool_allocator.cpp
 
-    vulkan-renderer/wrapper/cpu_texture.cpp
     vulkan-renderer/wrapper/debug_callback.cpp
     vulkan-renderer/wrapper/device.cpp
-    vulkan-renderer/wrapper/framebuffer.cpp
-    vulkan-renderer/wrapper/gpu_memory_buffer.cpp
-    vulkan-renderer/wrapper/gpu_texture.cpp
-    vulkan-renderer/wrapper/image.cpp
     vulkan-renderer/wrapper/instance.cpp
     vulkan-renderer/wrapper/make_info.cpp
     vulkan-renderer/wrapper/sampler.cpp
     vulkan-renderer/wrapper/shader.cpp
-    vulkan-renderer/wrapper/uniform_buffer.cpp
 
     vulkan-renderer/wrapper/commands/command_buffer.cpp
     vulkan-renderer/wrapper/commands/command_pool.cpp
-
-    vulkan-renderer/wrapper/descriptors/descriptor.cpp
-    vulkan-renderer/wrapper/descriptors/descriptor_builder.cpp
 
     vulkan-renderer/wrapper/descriptors/descriptor_pool.cpp
     vulkan-renderer/wrapper/descriptors/descriptor_pool_allocator.cpp

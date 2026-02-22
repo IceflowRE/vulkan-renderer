@@ -38,7 +38,6 @@ private:
     std::uint32_t m_window_height{0};
     Mode m_window_mode{Mode::WINDOWED};
     std::string m_window_title;
-    std::vector<GpuTexture> m_textures;
     UniformBufferObject m_ubo;
 
     /// @TODO The TimeStep class can be removed because we have FPSLimiter which delivers the time_passed.
@@ -64,7 +63,6 @@ private:
     void load_octree_geometry(bool initialize);
     void setup_window_and_input_callbacks();
     void update_imgui_overlay();
-    void update_uniform_buffers();
     /// Use the camera's position and view direction vector to check for ray-octree collisions with all octrees.
     void check_octree_collisions();
     void process_input();
