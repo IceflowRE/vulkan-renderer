@@ -54,7 +54,6 @@ ImGUIOverlay::ImGUIOverlay(const wrapper::Device &device, std::weak_ptr<Swapchai
     if (font == nullptr || m_font_texture_data == nullptr) {
         spdlog::error("Unable to load font {}. Falling back to error texture", FONT_FILE_PATH);
 
-        // RENDERGRAPH2
         // @TODO: generate error Texture!
     } else {
         spdlog::trace("Creating ImGUI font texture");
@@ -92,22 +91,18 @@ ImGUIOverlay::ImGUIOverlay(const wrapper::Device &device, std::weak_ptr<Swapchai
             return builder.add(m_descriptor_set2, m_imgui_texture2, 0).build();
         });
 
-    // RENDERGRAPH2
-    m_vertex_buffer2 = render_graph2->add_buffer("imgui", render_graph::BufferType::VERTEX_BUFFER, [&]() {
-        //  @TODO: Is this correct?
+    m_vertex_buffer2 = render_graph2->add_buffer("ImGui vertices", render_graph::BufferType::VERTEX_BUFFER, [&]() {
         if (!m_vertex_data.empty()) {
             m_vertex_buffer2.lock()->request_update(m_vertex_data);
         }
     });
-    // RENDERGRAPH2
-    m_index_buffer2 = render_graph2->add_buffer("imgui", render_graph::BufferType::INDEX_BUFFER, [&]() {
-        //  @TODO: Is this correct?
+
+    m_index_buffer2 = render_graph2->add_buffer("ImGui indices", render_graph::BufferType::INDEX_BUFFER, [&]() {
         if (!m_index_data.empty()) {
             m_index_buffer2.lock()->request_update(m_index_data);
         }
     });
 
-    // RENDERGRAPH2
     render_graph2->add_graphics_pipeline([&](render_graph::GraphicsPipelineBuilder &builder) {
         const auto swapchain = m_swapchain.lock();
         m_imgui_pipeline2 = builder
@@ -174,7 +169,6 @@ ImGUIOverlay::ImGUIOverlay(const wrapper::Device &device, std::weak_ptr<Swapchai
             // @TODO Decouple passes from actual reads and writes: You can say pass B comes after pass A and reads from
             // it, but that does not have to imply which buffers are written to in A or read from in B...
             .writes_to(swapchain2)
-            //.writes_to(back_buffer2)
             .reads_from(m_vertex_buffer2)
             .reads_from(m_index_buffer2)
             .set_on_record([&](const wrapper::commands::CommandBuffer &cmd_buf) {
@@ -245,9 +239,6 @@ void ImGUIOverlay::update() {
         m_index_data.insert(m_index_data.end(), cmd_list->IdxBuffer.Data,
                             cmd_list->IdxBuffer.Data + cmd_list->IdxBuffer.Size);
     }
-
-    m_vertex_buffer2.lock()->request_update(m_vertex_data);
-    m_index_buffer2.lock()->request_update(m_index_data);
 }
 
 } // namespace inexor::vulkan_renderer

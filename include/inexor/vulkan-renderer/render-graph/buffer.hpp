@@ -92,13 +92,7 @@ private:
     void create(const CommandBuffer &cmd_buf);
 
     /// Call destroy_buffer and destroy_staging_buffer
-    void destroy_all();
-
-    /// Call vmaDestroyBuffer for the actual buffer
-    void destroy_buffer();
-
-    /// Call vmaDestroyBuffer for the staging bufffer
-    void destroy_staging_buffer();
+    void destroy();
 
 public:
     /// Default constructor

@@ -298,14 +298,13 @@ void RenderGraph::update_buffers() {
                          [&](const CommandBuffer &cmd_buf) {
                              for (const auto &buffer : m_buffers) {
                                  if (buffer->m_update_requested) {
-                                     buffer->destroy_all();
                                      buffer->create(cmd_buf);
                                  }
                              }
                          });
     }
     // NOTE: For the "else" case: We can't insert a debug label here telling us that there are no buffer updates
-    // required because that command itself would require a command buffer to be in recording state
+    // required because that debug label command itself would require a command buffer to be in recording state!
 }
 
 void RenderGraph::update_textures() {
@@ -329,8 +328,10 @@ void RenderGraph::update_textures() {
                          [&](const CommandBuffer &cmd_buf) {
                              for (const auto &texture : m_textures) {
                                  if (texture->m_update_requested) {
-                                     // @TODO Do we need to recreate the images if image resolution doesn't change?
+                                     // @TODO We must explain why the update mechanism is different for textures (why
+                                     // create and update?)
                                      texture->destroy();
+                                     // @TODO Do we need to recreate the images every frame!
                                      texture->create();
                                      texture->update(cmd_buf);
                                  }

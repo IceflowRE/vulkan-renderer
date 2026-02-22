@@ -584,7 +584,7 @@ void ExampleApp::setup_render_graph() {
     // consistent. We could immediately invoke the lambda to execute it on the spot...
     m_graphics_pass2 = m_render_graph2->add_graphics_pass(
         m_render_graph2->get_graphics_pass_builder()
-            .writes_to(m_swapchain2)
+            .writes_to(m_swapchain2, VkClearValue{0.0f, 0.0f, 0.0f})
             .writes_to(m_depth_buffer2)
             .reads_from(m_vertex_buffer2)
             .writes_to(m_index_buffer2)

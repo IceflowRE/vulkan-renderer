@@ -40,14 +40,11 @@ Buffer::Buffer(Buffer &&other) noexcept : m_device(other.m_device) {
 }
 
 Buffer::~Buffer() {
-    destroy_all();
+    destroy();
 }
 
 void Buffer::create(const CommandBuffer &cmd_buf) {
-    if (m_src_data_size == 0) {
-        spdlog::warn("Warning: Can't create buffer of size 0!");
-        return;
-    }
+    destroy();
 
     // This helps us to find the correct VkBufferUsageFlags depending on the BufferType
     const std::unordered_map<BufferType, VkBufferUsageFlags> BUFFER_USAGE{
@@ -111,10 +108,6 @@ void Buffer::create(const CommandBuffer &cmd_buf) {
             throw VulkanException("Error: vmaFlushAllocation failed for buffer!", result, m_name);
         }
     } else {
-        // Make sure to destroy the previous staging buffer
-        if (m_staging_buffer != VK_NULL_HANDLE) {
-            destroy_staging_buffer();
-        }
         // The allocation ended up in non-mappable memory and we need a staging buffer and a copy command to upload data
         const auto staging_buf_ci = wrapper::make_info<VkBufferCreateInfo>({
             // The size of the staging buffer must be the size of the actual buffer
@@ -178,18 +171,11 @@ void Buffer::create(const CommandBuffer &cmd_buf) {
     // would increase the total number of command buffer submissions though.
 }
 
-void Buffer::destroy_all() {
-    destroy_buffer();
-    destroy_staging_buffer();
-}
-
-void Buffer::destroy_buffer() {
+void Buffer::destroy() {
     vmaDestroyBuffer(m_device.allocator(), m_buffer, m_alloc);
     m_buffer = VK_NULL_HANDLE;
     m_alloc = VK_NULL_HANDLE;
-}
 
-void Buffer::destroy_staging_buffer() {
     vmaDestroyBuffer(m_device.allocator(), m_staging_buffer, m_staging_buffer_alloc);
     m_staging_buffer = VK_NULL_HANDLE;
     m_staging_buffer_alloc = VK_NULL_HANDLE;
