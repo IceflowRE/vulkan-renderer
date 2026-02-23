@@ -20,7 +20,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: main
 
@@ -58,7 +58,7 @@ jobs:
               });
 
               const nightlyArtifacts = artifacts.data.artifacts.filter(a =>
-                a.name.startsWith("Nightly_")
+                a.name.startsWith("nightly-")
               );
 
               if (nightlyArtifacts.length === 0) {

@@ -39,8 +39,10 @@
 
 # custom ignores
 .idea/
-cmake-build-*/
-build/
+/cmake-build-*/
+/build/
+/out/
+/documentation/build/
 *.spv
 vma-dumps/*.json
 *.ini

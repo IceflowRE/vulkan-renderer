@@ -11,8 +11,6 @@ jobs:
     name: Clang Format
     runs-on: ubuntu-latest
     container: ubuntu:rolling
-    env:
-      DEBIAN_FRONTEND: "noninteractive"
     steps:
       - name: Update environment
         shell: bash
@@ -26,7 +24,7 @@ jobs:
             git
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         
       - name: Fetch ${{ github.base_ref }}
         shell: bash

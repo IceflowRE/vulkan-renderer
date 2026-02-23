@@ -1,0 +1,11 @@
+name: "Set Build Version"
+description: "Cross-platform short SHA"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set build version
+      shell: pwsh
+      run: |
+        $shortSha = git rev-parse --short HEAD
+        "BUILD_VERSION=$shortSha" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append

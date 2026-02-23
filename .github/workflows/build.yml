@@ -3,7 +3,7 @@ name: Build Code
 on:
   push:
     branches:
-        - main
+      - main
   pull_request:
     types: [opened, synchronize, reopened]
 
@@ -20,118 +20,54 @@ jobs:
   linux:
     name: ${{ matrix.config.name }}
     runs-on: ubuntu-latest
+    env:
+      INEXOR_VULKAN_SDK_CHECKSUM: "8005e2cf3e89c80cbe1c0d0a259c88248de3257b4fc6fdefb47409edb3e43ecb"
     strategy:
       fail-fast: false
       matrix:
         config:
           - name: "Ubuntu Clang (Debug)"
-            compiler: "clang"
-            cc: "clang-18"
-            cxx: "clang++-18"
-            build_type: "Debug"
+            cmake_preset: "linux-clang-debug"
+            artifacts_id: "clang_debug"
           - name: "Ubuntu Clang (Release)"
-            compiler: "clang"
-            cc: "clang-18"
-            cxx: "clang++-18"
-            build_type: "Release"
+            cmake_preset: "linux-clang-release"
+            artifacts_id: "clang_release"
           - name: "Ubuntu GCC (Debug)"
-            compiler: "gcc"
-            cc: "gcc-14"
-            cxx: "g++-14"
-            build_type: "Debug"
+            cmake_preset: "linux-gcc-debug"
+            artifacts_id: "gcc_debug"
           - name: "Ubuntu GCC (Release)"
-            compiler: "gcc"
-            cc: "gcc-14"
-            cxx: "g++-14"
-            build_type: "Release"
+            cmake_preset: "linux-gcc-release"
+            artifacts_id: "gcc_release"
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
-        
-      - name: Set build date
-        run: |
-          SHORT_SHA=$(git rev-parse --short HEAD)
-          BUILD_DATE=$(date +'%Y-%b-%d_%H-%M-%S')
-          BUILD_VERSION="${SHORT_SHA}_${BUILD_DATE}"
-          echo "BUILD_VERSION=$BUILD_VERSION" >> $GITHUB_ENV
+        uses: actions/checkout@v6
 
-      - name: Install Dependencies
-        run: |
-          sudo apt update -qq
-          sudo apt-get install -y \
-            gcc-14 \
-            g++-14 \
-            clang-18 \
-            cmake \
-            curl \
-            git \
-            libgl1-mesa-dev \
-            libwayland-dev \
-            libx11-dev \
-            libx11-xcb-dev \
-            libxkbcommon-dev \
-            libxcb-dri3-dev \
-            libxcb-icccm4-dev \
-            libxcb-image0-dev \
-            libxcb-keysyms1-dev \
-            libxcb-randr0-dev \
-            libxcb-render-util0-dev \
-            libxcb-render0-dev \
-            libxcb-shape0-dev \
-            libxcb-sync-dev \
-            libxcb-util-dev \
-            libxcb-xfixes0-dev \
-            libxcb-xinerama0-dev \
-            libxcb-xkb-dev \
-            lld \
-            ninja-build \
-            pkg-config \
-            python3 \
-            python3-pip \
-            xkb-data \
-            xorg-dev
-          pip3 install --break-system-packages wheel setuptools
-
-      - name: Check Cache for Vulkan SDK
-        id: cache-vulkan-sdk
-        uses: actions/cache@v4
+      - name: Setup System
+        uses: ./.github/actions/linux-setup
         with:
-          path: ${{ env.INEXOR_VULKAN_SDK_PATH }}
-          key: vulkan-sdk-${{ env.INEXOR_VULKAN_SDK_VERSION }}-${{ runner.os }}
+          vulkan-sdk-version: ${{ env.INEXOR_VULKAN_SDK_VERSION }}
+          vulkan-sdk-checksum: ${{ env.INEXOR_VULKAN_SDK_CHECKSUM }}
+          vulkan-sdk-path: ${{ env.INEXOR_VULKAN_SDK_PATH }}
 
-      - name: Download Vulkan SDK
-        if: steps.cache-vulkan-sdk.outputs.cache-hit != 'true'
-        run: |
-          mkdir -p ${{ env.INEXOR_VULKAN_SDK_PATH }}
-          wget -O vulkansdk.tar.xz https://sdk.lunarg.com/sdk/download/${{ env.INEXOR_VULKAN_SDK_VERSION }}/linux/vulkan-sdk.tar.xz
-          tar -xJf vulkansdk.tar.xz -C ${{ env.INEXOR_VULKAN_SDK_PATH }}
+      - name: Set build version
+        uses: ./.github/actions/set-build-version
 
-      - name: Check Cache for CMake files
+      - name: Load CMake Cache
         id: cache-cmake
-        uses: actions/cache@v4
+        uses: ./.github/actions/cmake-cache
         with:
-          path: build
-          key: cmake-${{ runner.os }}-${{ matrix.config.compiler }}-${{ matrix.config.build_type }}-${{ hashFiles('CMakeLists.txt', '**/CMakeLists.txt', '**/*.cmake') }}
+          key: ${{ matrix.config.cmake_preset }}
 
       - name: Configure CMake
         if: steps.cache-cmake.outputs.cache-hit != 'true'
         run: |
-          export CC=${{ matrix.config.cc }}
-          export CXX=${{ matrix.config.cxx }}
-          export VULKAN_SDK="${{ env.INEXOR_VULKAN_SDK_PATH }}/${{ env.INEXOR_VULKAN_SDK_VERSION }}/x86_64"
-          export PATH=$VULKAN_SDK/bin:$PATH
-          export LD_LIBRARY_PATH=$VULKAN_SDK/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
-          export VK_LAYER_PATH=$VULKAN_SDK/share/vulkan/explicit_layer.d
-          cmake . \
-            -Bbuild \
-            -DCMAKE_BUILD_TYPE=${{ matrix.config.build_type }} \
-            -DINEXOR_BUILD_BENCHMARKS=ON \
-            -DINEXOR_BUILD_TESTS=ON \
-            -GNinja \
-            ${{ matrix.config.cmake_configure_options }}
+          cmake . --preset ${{ matrix.config.cmake_preset }} -Bbuild
 
-      - name: Build Main Code
+      - name: Build Core
+        run: cmake --build build --target inexor-vulkan-renderer-core-lib --parallel
+
+      - name: Build Example
         run: cmake --build build --target inexor-vulkan-renderer-example --parallel
 
       - name: Build Tests
@@ -141,8 +77,8 @@ jobs:
         run: cmake --build build --target inexor-vulkan-renderer-benchmarks --parallel
 
       - name: Run Tests
+        working-directory: build
         run: |
-          cd build
           # Run all Google Test executables
           for test_exec in $(find . -type f -executable -name '*-tests'); do
             echo "Running $test_exec"
@@ -150,13 +86,13 @@ jobs:
           done
 
       - name: Run Benchmarks
+        working-directory: build
         run: |
-          cd build
           mkdir -p benchmark
           find . -type f -executable -name '*-benchmarks' | while read -r bench_exec; do
-              echo "Running $bench_exec"
-              # Log stdout and stderr to console AND file
-              "$bench_exec" 2>&1 | tee "benchmark/$(basename "$bench_exec").txt"
+            echo "Running $bench_exec"
+            # Log stdout and stderr to console AND file
+            "$bench_exec" 2>&1 | tee "benchmark/$(basename "$bench_exec").txt"
           done
 
       - name: Prepare Nightly Artifacts
@@ -174,119 +110,79 @@ jobs:
           mkdir -p artifacts/shaders
           cp ./shaders/*.spv artifacts/shaders/
           cd artifacts
-          tar -zcvf "../Nightly_Linux_${{ matrix.config.compiler }}_${{ matrix.config.build_type }}_${{ env.BUILD_VERSION}}.tar.xz" *
+          tar -zcvf "../nightly-linux_${{ matrix.config.artifacts_id }}-${{ env.BUILD_VERSION }}.tar.xz" *
 
-      - name: Upload Nightly Artifacts
-        uses: actions/upload-artifact@v4
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v6
         with:
-          name: Nightly_Linux_${{ matrix.config.compiler }}_${{ matrix.config.build_type }}_${{ env.BUILD_VERSION}}
-          path: Nightly_Linux_${{ matrix.config.compiler }}_${{ matrix.config.build_type }}_${{ env.BUILD_VERSION}}.tar.xz
+          name: nightly-linux_${{ matrix.config.artifacts_id }}-${{ env.BUILD_VERSION }}
+          path: nightly-linux_${{ matrix.config.artifacts_id }}-${{ env.BUILD_VERSION }}.tar.xz
           retention-days: 60
 
   windows:
     name: ${{ matrix.config.name }}
     runs-on: windows-latest
+    env:
+      INEXOR_VULKAN_SDK_CHECKSUM: "811fcb9b43d09248520b2f38ae9a3763fc81df950fdab874f23bd762b07a9b12"
     strategy:
       fail-fast: false
       matrix:
         config:
-          - {
-              name: "Windows MSVC (Debug)",
-              compiler: "msvc",
-              cc: "cl",
-              cxx: "cl",
-              cmake_configure_options: '-G "Visual Studio 17 2022" -A x64',
-              build_type: "Debug",
-              cmake_build_options: "--config Debug"
-            }
-          - {
-              name: "Windows MSVC (Release)",
-              compiler: "msvc",
-              cc: "cl",
-              cxx: "cl",
-              cmake_configure_options: '-G "Visual Studio 17 2022" -A x64',
-              build_type: "Release",
-              cmake_build_options: "--config Release"
-            }
-          - {
-              name: "Windows Clang (Debug)",
-              compiler: "clang",
-              cc: "clang-cl",
-              cxx: "clang-cl",
-              cmake_configure_options: '-G "Ninja" -DCMAKE_CXX_COMPILER=clang-cl -DCMAKE_C_COMPILER=clang-cl -DCMAKE_LINKER=lld-link',
-              build_type: "Debug",
-              cmake_build_options: "--config Debug"
-            }
-          - {
-              name: "Windows Clang (Release)",
-              compiler: "clang",
-              cc: "clang-cl",
-              cxx: "clang-cl",
-              cmake_configure_options: '-G "Ninja" -DCMAKE_CXX_COMPILER=clang-cl -DCMAKE_C_COMPILER=clang-cl -DCMAKE_LINKER=lld-link',
-              build_type: "Release",
-              cmake_build_options: "--config Release"
-            }
+          - name: "Windows MSVC (Debug)"
+            cmake_preset: "windows-msvc"
+            extra_cmake_args: "--config Debug"
+            artifacts_id: "msvc_debug"
+          - name: "Windows MSVC (Release)"
+            cmake_preset: "windows-msvc"
+            extra_cmake_args: "--config Release"
+            artifacts_id: "msvc_release"
+          - name: "Windows Clang (Debug)"
+            cmake_presett: "windows-clang-debug"
+            artifacts_id: "clang_debug"
+          - name: "Windows Clang (Release)"
+            cmake_preset: "windows-clang-release"
+            artifacts_id: "clang_release"
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
-        
-      - name: Update Environment
-        run: pip3 install wheel setuptools
-        
-      - name: Set Build Date
-        run: |
-          $shortSha = git rev-parse --short HEAD
-          $buildDate = Get-Date -Format 'yyyy-MMM-dd_HH-mm-ss'
-          $buildVersion = "${shortSha}_$buildDate"
-          echo "BUILD_VERSION=$buildVersion" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        uses: actions/checkout@v6
 
-      - name: Check Cache for Vulkan SDK
-        id: cache-vulkan
-        uses: actions/cache@v4
+      - name: Setup System
+        uses: ./.github/actions/windows-setup
         with:
-          path: ${{ env.INEXOR_VULKAN_SDK_PATH }}
-          key: vulkan-sdk-${{ env.INEXOR_VULKAN_SDK_VERSION }}-${{ runner.os }}
+          vulkan-sdk-version: ${{ env.INEXOR_VULKAN_SDK_VERSION }}
+          vulkan-sdk-checksum: ${{ env.INEXOR_VULKAN_SDK_CHECKSUM }}
+          vulkan-sdk-path: ${{ env.INEXOR_VULKAN_SDK_PATH }}
 
-      - name: Download Vulkan SDK
-        if: steps.cache-vulkan.outputs.cache-hit != 'true'
-        run: |
-          curl -LS -o vulkansdk.exe https://sdk.lunarg.com/sdk/download/${{ env.INEXOR_VULKAN_SDK_VERSION }}/windows/VulkanSDK-${{ env.INEXOR_VULKAN_SDK_VERSION }}-Installer.exe
-          7z x -y vulkansdk.exe -o"${{ env.INEXOR_VULKAN_SDK_PATH }}"
+      - name: Set build version
+        uses: ./.github/actions/set-build-version
 
-      - name: Check Cache for CMake Files (Build)
+      - name: Load CMake Cache
         id: cache-cmake
-        uses: actions/cache@v4
+        uses: ./.github/actions/cmake-cache
         with:
-          path: build
-          key: cmake-${{ runner.os }}-${{ matrix.config.compiler }}-${{ matrix.config.build_type }}-${{ hashFiles('CMakeLists.txt', '**/CMakeLists.txt', '**/*.cmake') }}
+          key: ${{ matrix.config.cmake_preset }}
 
-      - name: Configure CMake (Build)
+      - name: Configure CMake
         if: steps.cache-cmake.outputs.cache-hit != 'true'
         run: |
-          $env:CC="${{ matrix.config.cc }}"
-          $env:CXX="${{ matrix.config.cxx }}"
-          $env:Path += ";${{ env.INEXOR_VULKAN_SDK_PATH }}\;${{ env.INEXOR_VULKAN_SDK_PATH }}\Bin\"
-          $env:VULKAN_SDK="${{ env.INEXOR_VULKAN_SDK_PATH }}"
-          cmake . `
-            -Bbuild `
-            -DCMAKE_BUILD_TYPE=${{ matrix.config.build_type }} `
-            -DINEXOR_BUILD_BENCHMARKS=ON `
-            -DINEXOR_BUILD_TESTS=ON `
-            ${{ matrix.config.cmake_configure_options }}
+          cmake . --preset ${{ matrix.config.cmake_preset }} -Bbuild
 
-      - name: Build Main Code
-        run: cmake --build build --target inexor-vulkan-renderer-example --parallel
+      - name: Build Core
+        run: cmake --build build --target inexor-vulkan-renderer-core-lib --parallel ${{ matrix.config.extra_cmake_args }}
+
+      - name: Build Example
+        run: cmake --build build --target inexor-vulkan-renderer-example --parallel ${{ matrix.config.extra_cmake_args }}
 
       - name: Build Tests
-        run: cmake --build build --target inexor-vulkan-renderer-tests --parallel
+        run: cmake --build build --target inexor-vulkan-renderer-tests --parallel ${{ matrix.config.extra_cmake_args }}
 
       - name: Build Benchmarks
-        run: cmake --build build --target inexor-vulkan-renderer-benchmarks --parallel
+        run: cmake --build build --target inexor-vulkan-renderer-benchmarks --parallel ${{ matrix.config.extra_cmake_args }}
 
       - name: Run Tests
+        working-directory: build
         run: |
-          cd build
           # Run all Google Test executables
           Get-ChildItem -Recurse -Filter '*-tests.exe' | ForEach-Object {
             Write-Host "Running $($_.FullName)"
@@ -294,16 +190,16 @@ jobs:
           }
 
       - name: Run Benchmarks
+        working-directory: build
         run: |
-          cd build
           if (Test-Path benchmark) { Remove-Item benchmark -Recurse -Force }
           mkdir benchmark
           Get-ChildItem -Recurse -Filter '*-benchmarks.exe' | ForEach-Object {
-              $benchPath = $_.FullName
-              $outputFile = Join-Path -Path "benchmark" -ChildPath "$($_.BaseName).txt"
-              Write-Host "Running $benchPath"
-              # Run the benchmark, log both stdout and stderr to console AND file
-              & $benchPath 2>&1 | Tee-Object -FilePath $outputFile
+            $benchPath = $_.FullName
+            $outputFile = Join-Path -Path "benchmark" -ChildPath "$($_.BaseName).txt"
+            Write-Host "Running $benchPath"
+            # Run the benchmark, log both stdout and stderr to console AND file
+            & $benchPath 2>&1 | Tee-Object -FilePath $outputFile
           }
 
       - name: Prepare Nightly Artifacts
@@ -312,33 +208,33 @@ jobs:
           mkdir artifacts
           # Copy main executable
           Get-ChildItem -Path ./build -Recurse -Filter "inexor-vulkan-renderer-example.exe" | ForEach-Object {
-              Copy-Item -Path $_.FullName -Destination artifacts
+            Copy-Item -Path $_.FullName -Destination artifacts
           }
           # Copy test executables and results
           Get-ChildItem -Path ./build -Recurse -Filter "*-tests.exe" | ForEach-Object {
-              Copy-Item -Path $_.FullName -Destination artifacts
+            Copy-Item -Path $_.FullName -Destination artifacts
           }
           Get-ChildItem -Path ./build -Filter "*.xml" | ForEach-Object {
-              Copy-Item -Path $_.FullName -Destination artifacts
+            Copy-Item -Path $_.FullName -Destination artifacts
           }
           # Copy benchmark executables and results
           Get-ChildItem -Path ./build -Recurse -Filter "*-benchmarks.exe" | ForEach-Object {
-              Copy-Item -Path $_.FullName -Destination artifacts
+            Copy-Item -Path $_.FullName -Destination artifacts
           }
           mkdir artifacts/benchmark
           Get-ChildItem -Path ./build/benchmark -Filter "*.txt" | ForEach-Object {
-              Copy-Item -Path $_.FullName -Destination artifacts/benchmark
+            Copy-Item -Path $_.FullName -Destination artifacts/benchmark
           }
           # Copy configuration, assets, and shaders
           Copy-Item -Path ./assets/. -Destination artifacts -Recurse
           mkdir artifacts/shaders
           Copy-Item -Path ./shaders/*.spv -Destination artifacts/shaders
           # Create nightly archive
-          7z a -tzip "Nightly_Windows_${{ matrix.config.compiler }}_${{ matrix.config.build_type }}_${{ env.BUILD_VERSION}}.zip" ./artifacts/*
+          7z a -tzip "nightly-windows_${{ matrix.config.artifacts_id }}-${{ env.BUILD_VERSION}}.zip" ./artifacts/*
 
-      - name: Upload Nightly Artifacts
-        uses: actions/upload-artifact@v4
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v6
         with:
-          name: Nightly_Windows_${{ matrix.config.compiler }}_${{ matrix.config.build_type }}_${{ env.BUILD_VERSION}}
-          path: Nightly_Windows_${{ matrix.config.compiler }}_${{ matrix.config.build_type }}_${{ env.BUILD_VERSION}}.zip
+          name: nightly-windows_${{ matrix.config.artifacts_id }}-${{ env.BUILD_VERSION}}
+          path: nightly-windows_${{ matrix.config.artifacts_id }}-${{ env.BUILD_VERSION}}.zip
           retention-days: 60

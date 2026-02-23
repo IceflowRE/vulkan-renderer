@@ -23,40 +23,43 @@ jobs:
           sudo apt install -y cmake doxygen git python3 python3-pip python3-venv wget zip
 
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
 
-      - name: Set build date
-        run: |
-          SHORT_SHA=$(git rev-parse --short HEAD)
-          BUILD_DATE=$(date +'%Y-%b-%d_%H-%M-%S')
-          BUILD_VERSION="${SHORT_SHA}_${BUILD_DATE}"
-          echo "BUILD_VERSION=$BUILD_VERSION" >> $GITHUB_ENV
-        
+      - name: Set build version
+        uses: ./.github/actions/set-build-version
+
+      - name: Load CMake Cache
+        id: cache-cmake
+        uses: ./.github/actions/cmake-cache
+        with:
+          path: documentation/build
+          key: documentation
+
       - name: Configure CMake
-        working-directory: ${{ github.workspace }}/documentation
+        working-directory: documentation
         run: |
           cmake . -Bbuild
 
       - name: Build
-        working-directory: ${{ github.workspace }}/documentation
+        working-directory: documentation
         run: |
           cmake --build build
 
       - name: Linkcheck
-        working-directory: ${{ github.workspace }}/documentation
+        working-directory: documentation
         # TODO: return true as long GitHub does not allow specific steps to fail
         run: |
           cmake --build build --target inexor-vulkan-renderer-documentation-linkcheck || true
 
       - name: Prepare artifacts
-        working-directory: ${{ github.workspace }}/documentation
+        working-directory: documentation
         run: |
-          ZIP_NAME=Nightly_Documentation_${BUILD_VERSION}.zip
+          ZIP_NAME=nightly-documentation_${{ env.BUILD_VERSION }}.zip
           zip -r "$ZIP_NAME" build/html
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v6
         with:
-          name: Nightly_Documentation_${{ env.BUILD_VERSION}}
-          path: ${{ github.workspace }}/documentation/Nightly_Documentation_${{ env.BUILD_VERSION}}.zip
+          name: nightly-documentation-${{ env.BUILD_VERSION }}
+          path: documentation/nightly-documentation-${{ env.BUILD_VERSION }}.zip
           retention-days: 60
