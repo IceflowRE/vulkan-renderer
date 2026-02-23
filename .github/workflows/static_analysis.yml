@@ -29,7 +29,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Setup System
-        uses: ./.github/actions/linux-setup
+        uses: ./.github/actions/setup-linux
         with:
           vulkan-sdk-version: ${{ env.INEXOR_VULKAN_SDK_VERSION }}
           vulkan-sdk-checksum: ${{ env.INEXOR_VULKAN_SDK_CHECKSUM_LINUX }}
@@ -87,7 +87,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Setup System
-        uses: ./.github/actions/linux-setup
+        uses: ./.github/actions/setup-linux
         with:
           vulkan-sdk-version: ${{ env.INEXOR_VULKAN_SDK_VERSION }}
           vulkan-sdk-checksum: ${{ env.INEXOR_VULKAN_SDK_CHECKSUM_LINUX }}
@@ -132,7 +132,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Setup System
-        uses: ./.github/actions/linux-setup
+        uses: ./.github/actions/setup-linux
         with:
           vulkan-sdk-version: ${{ env.INEXOR_VULKAN_SDK_VERSION }}
           vulkan-sdk-checksum: ${{ env.INEXOR_VULKAN_SDK_CHECKSUM_LINUX }}
@@ -209,7 +209,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Setup System
-        uses: ./.github/actions/windows-setup
+        uses: ./.github/actions/setup-windows
         with:
           vulkan-sdk-version: ${{ env.INEXOR_VULKAN_SDK_VERSION }}
           vulkan-sdk-checksum: ${{ env.INEXOR_VULKAN_SDK_CHECKSUM_WINDOWS }}
