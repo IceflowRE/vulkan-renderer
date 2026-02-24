@@ -1,14 +1,11 @@
 name: "Setup Windows System"
-description: "Setup Windows System for Inexor CI"
+description: "Setup Windows System"
 inputs:
   vulkan-sdk-version:
     description: "Version of the Vulkan SDK to install"
     required: true
   vulkan-sdk-checksum:
     description: "SHA256 checksum of the Vulkan SDK archive"
-    required: true
-  vulkan-sdk-path:
-    description: "Path to install the Vulkan SDK"
     required: true
 
 runs:
@@ -22,7 +19,7 @@ runs:
       id: cache-vulkan
       uses: actions/cache@v5
       with:
-        path: ${{ inputs.vulkan-sdk-path }}
+        path: ${{ github.workspace }}/vulkan_sdk
         key: vulkan-sdk-${{ inputs.vulkan-sdk-version }}-${{ runner.os }}
 
     - name: Install Vulkan SDK
@@ -31,9 +28,9 @@ runs:
       run: |
         curl -LS -o vulkansdk.exe https://sdk.lunarg.com/sdk/download/${{ inputs.vulkan-sdk-version }}/windows/VulkanSDK-${{ inputs.vulkan-sdk-version }}-Installer.exe
         if ((Get-FileHash vulkansdk.exe -Algorithm SHA256).Hash.ToLower() -ne ${{ inputs.vulkan-sdk-checksum }}) { Write-Error "Checksum mismatch!"; exit 1 }
-        7z x -y vulkansdk.exe -o"${{ inputs.vulkan-sdk-path }}"
+        7z x -y vulkansdk.exe -o"${{ github.workspace }}/vulkan_sdk"
         Remove-Item vulkansdk.exe
         # Permanently add Vulkan SDK to PATH
-        echo "${{ inputs.vulkan-sdk-path }}" >> $env:GITHUB_PATH
-        echo "${{ inputs.vulkan-sdk-path }}\Bin" >> $env:GITHUB_PATH
-        echo "VULKAN_SDK=${{ inputs.vulkan-sdk-path }}" >> $env:GITHUB_ENV
+        echo "${{ github.workspace }}/vulkan_sdk" >> $env:GITHUB_PATH
+        echo "${{ github.workspace }}/vulkan_sdk\Bin" >> $env:GITHUB_PATH
+        echo "VULKAN_SDK=${{ github.workspace }}/vulkan_sdk" >> $env:GITHUB_ENV

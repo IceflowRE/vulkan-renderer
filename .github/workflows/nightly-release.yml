@@ -1,0 +1,56 @@
+name: Nightly Release
+
+on:
+  workflow_call:
+
+jobs:
+  nightly-release:
+    name: Nightly Release
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Download Core Builds
+        uses: actions/download-artifact@v5
+        with:
+          path: archives/core
+          pattern: '*-core-*'
+          merge-multiple: false
+
+      - name: Download Example Builds
+        uses: actions/download-artifact@v5
+        with:
+          path: archives/example
+          pattern: '*-example-*'
+          merge-multiple: false
+
+      - name: Download Documentation
+        uses: actions/download-artifact@v5
+        with:
+          path: archives/docs
+          pattern: 'documentation-*'
+          merge-multiple: false
+
+      - name: Create Git Tag
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git tag nightly
+          git push -f origin tag nightly
+
+      - name: Create or update Nightly release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NOTES: |
+            Latest development release, continuously updated.
+        run: |
+          output=$(gh release delete nightly -y 2>&1) || [[ "${output}" == "release not found" ]]
+          gh release create nightly \
+            ./archives/*.zip \
+            --title "Nightly Release" \
+            --notes "${{ env.NOTES }}" \
+            --prerelease \
+            --target ${{ github.sha }}

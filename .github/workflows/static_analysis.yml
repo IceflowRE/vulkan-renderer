@@ -1,22 +1,17 @@
 name: Static Code Analysis
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    types: [opened, synchronize, reopened]
-
-env:
-  INEXOR_VULKAN_SDK_VERSION: "1.3.283.0"
-  INEXOR_VULKAN_SDK_CHECKSUM_LINUX: "8005e2cf3e89c80cbe1c0d0a259c88248de3257b4fc6fdefb47409edb3e43ecb"
-  INEXOR_VULKAN_SDK_CHECKSUM_WINDOWS: "811fcb9b43d09248520b2f38ae9a3763fc81df950fdab874f23bd762b07a9b12"
-  INEXOR_VULKAN_SDK_PATH: "${{ github.workspace }}/vulkan_sdk"
-
-# Cancel CI workflows which are still running from previous pushes
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref_name }}
-  cancel-in-progress: true
+  workflow_call:
+    inputs:
+      vulkan-sdk-version:
+        type: string
+        required: true
+      vulkan-sdk-checksum-linux:
+        type: string
+        required: true
+      vulkan-sdk-checksum-windows:
+        type: string
+        required: true
 
 jobs:
   clang-tidy:
@@ -31,12 +26,8 @@ jobs:
       - name: Setup System
         uses: ./.github/actions/setup-linux
         with:
-          vulkan-sdk-version: ${{ env.INEXOR_VULKAN_SDK_VERSION }}
-          vulkan-sdk-checksum: ${{ env.INEXOR_VULKAN_SDK_CHECKSUM_LINUX }}
-          vulkan-sdk-path: ${{ env.INEXOR_VULKAN_SDK_PATH }}
-
-      - name: Set build version
-        uses: ./.github/actions/set-build-version
+          vulkan-sdk-version: ${{ inputs.vulkan-sdk-version }}
+          vulkan-sdk-checksum: ${{ inputs.vulkan-sdk-checksum-linux }}
 
       - name: Load CMake Cache
         id: cache-cmake
@@ -71,11 +62,15 @@ jobs:
             | sort | uniq -c | sort -nr \
             | sed 's/[][]//g' || true
 
+      - name: Set Build Version
+        uses: ./.github/actions/set-build-version
+
       - name: Upload Artifacts
         uses: actions/upload-artifact@v6
         with:
-          name: nightly-linux_static_analysis_clang_tidy-${{ env.BUILD_VERSION }}
+          name: static_analysis-clang_tidy-${{ env.BUILD_VERSION }}
           path: static_analysis-clang_tidy.txt
+          retention-days: 14
 
   scan-build:
     name: scan-build
@@ -89,12 +84,8 @@ jobs:
       - name: Setup System
         uses: ./.github/actions/setup-linux
         with:
-          vulkan-sdk-version: ${{ env.INEXOR_VULKAN_SDK_VERSION }}
-          vulkan-sdk-checksum: ${{ env.INEXOR_VULKAN_SDK_CHECKSUM_LINUX }}
-          vulkan-sdk-path: ${{ env.INEXOR_VULKAN_SDK_PATH }}
-
-      - name: Set build version
-        uses: ./.github/actions/set-build-version
+          vulkan-sdk-version: ${{ inputs.vulkan-sdk-version }}
+          vulkan-sdk-checksum: ${{ inputs.vulkan-sdk-checksum-linux }}
 
       - name: Load CMake Cache
         id: cache-cmake
@@ -114,13 +105,17 @@ jobs:
             -o static_analysis-scan_build_report \
             cmake --build build -- -j$(nproc) 2>&1 | tee static_analysis-scan_build_summary.txt
 
+      - name: Set Build Version
+        uses: ./.github/actions/set-build-version
+
       - name: Upload Artifacts
         uses: actions/upload-artifact@v6
         with:
-          name: nightly-linux_static_analysis_scan_build-${{ env.BUILD_VERSION }}
+          name: static_analysis-scan_build-${{ env.BUILD_VERSION }}
           path: |
             static_analysis-scan_build_report
             static_analysis-scan_build_summary.txt
+          retention-days: 14
 
   cppcheck:
     name: Cppcheck
@@ -134,12 +129,8 @@ jobs:
       - name: Setup System
         uses: ./.github/actions/setup-linux
         with:
-          vulkan-sdk-version: ${{ env.INEXOR_VULKAN_SDK_VERSION }}
-          vulkan-sdk-checksum: ${{ env.INEXOR_VULKAN_SDK_CHECKSUM_LINUX }}
-          vulkan-sdk-path: ${{ env.INEXOR_VULKAN_SDK_PATH }}
-
-      - name: Set build version
-        uses: ./.github/actions/set-build-version
+          vulkan-sdk-version: ${{ inputs.vulkan-sdk-version }}
+          vulkan-sdk-checksum: ${{ inputs.vulkan-sdk-checksum-linux }}
 
       - name: Install Cppcheck
         run: |
@@ -167,7 +158,7 @@ jobs:
             \( -name '*.cpp' -o -name '*.hpp' \) -print > source_files.txt
           cat source_files.txt
 
-      - name: Run cppcheck on source_files.txt
+      - name: Run Cppcheck on source_files.txt
         run: |
           # Use xargs to run cppcheck on all files listed in source_files.txt
           xargs -a source_files.txt cppcheck \
@@ -182,11 +173,15 @@ jobs:
         run: |
           cat static_analysis-cppcheck_output.txt | sort | uniq -c | sort -nr || true
 
+      - name: Set Build Version
+        uses: ./.github/actions/set-build-version
+
       - name: Upload Artifacts
         uses: actions/upload-artifact@v6
         with:
-          name: nightly-linux_static_analysis_cppcheck-${{ env.BUILD_VERSION }}
+          name: static_analysis_cppcheck-${{ env.BUILD_VERSION }}
           path: static_analysis-cppcheck_output.txt
+          retention-days: 14
 
   msvc-analysis:
     name: MSVC Analysis ${{ matrix.config.name }}
@@ -211,12 +206,8 @@ jobs:
       - name: Setup System
         uses: ./.github/actions/setup-windows
         with:
-          vulkan-sdk-version: ${{ env.INEXOR_VULKAN_SDK_VERSION }}
-          vulkan-sdk-checksum: ${{ env.INEXOR_VULKAN_SDK_CHECKSUM_WINDOWS }}
-          vulkan-sdk-path: ${{ env.INEXOR_VULKAN_SDK_PATH }}
-
-      - name: Set build version
-        uses: ./.github/actions/set-build-version
+          vulkan-sdk-version: ${{ inputs.vulkan-sdk-version }}
+          vulkan-sdk-checksum: ${{ inputs.vulkan-sdk-checksum-windows }}
 
       - name: Load CMake Cache
         id: cache-cmake
@@ -229,16 +220,24 @@ jobs:
         run: |
           cmake . --preset ${{ matrix.config.cmake_preset }} -Bbuild -DCMAKE_CXX_FLAGS=/analyze
 
-      - name: Run MSVC Static Code Analysis
-        run: |
-          cmake --build build --target inexor-vulkan-renderer-core-lib --config ${{ matrix.config.build_type }} > msvc_analysis-${{ matrix.config.artifacts_id }}.txt 2>&1 || true
-          cmake --build build --target inexor-vulkan-renderer-example --config ${{ matrix.config.build_type }} >> msvc_analysis-${{ matrix.config.artifacts_id }} 2>&1 || true
-          cmake --build build --target inexor-vulkan-renderer-tests --config ${{ matrix.config.build_type }} >> msvc_analysis-${{ matrix.config.artifacts_id }} 2>&1 || true
-          cmake --build build --target inexor-vulkan-renderer-benchmarks --config ${{ matrix.config.build_type }} >> msvc_analysis-${{ matrix.config.artifacts_id }} 2>&1 || true
+      - name: Analyse Core
+        run: cmake --build build --target inexor-vulkan-renderer-core-lib --config ${{ matrix.config.build_type }} > msvc_analysis-${{ matrix.config.artifacts_id }}.txt 2>&1 || true
+      
+      - name: Analyse Example
+        run: cmake --build build --target inexor-vulkan-renderer-example --config ${{ matrix.config.build_type }} >> msvc_analysis-${{ matrix.config.artifacts_id }}.txt 2>&1 || true
+      
+      - name: Analyse Tests
+        run: cmake --build build --target inexor-vulkan-renderer-tests --config ${{ matrix.config.build_type }} >> msvc_analysis-${{ matrix.config.artifacts_id }}.txt 2>&1 || true
+      
+      - name: Analyse Benchmarks
+        run: cmake --build build --target inexor-vulkan-renderer-benchmarks --config ${{ matrix.config.build_type }} >> msvc_analysis-${{ matrix.config.artifacts_id }}.txt 2>&1 || true
+
+      - name: Set Build Version
+        uses: ./.github/actions/set-build-version
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v6
         with:
-          name: nightly-windows_static_analysis_msvc_analysis-${{ matrix.config.artifacts_id }}_${{ env.BUILD_VERSION}}
-          path: msvc_analysis-${{ matrix.config.artifacts_id }}
-          retention-days: 60
+          name: static_analysis-msvc_analysis_${{ matrix.config.artifacts_id }}-${{ env.BUILD_VERSION}}
+          path: msvc_analysis-${{ matrix.config.artifacts_id }}.txt
+          retention-days: 14

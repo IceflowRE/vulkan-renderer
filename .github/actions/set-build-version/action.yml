@@ -1,5 +1,5 @@
 name: "Set Build Version"
-description: "Cross-platform short SHA"
+description: "Sets env.BUILD_VERSION to the short git sha of the current commit."
 
 runs:
   using: "composite"

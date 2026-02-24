@@ -112,8 +112,21 @@
       "toolchainFile": "${sourceDir}/cmake/toolchains/windows-clang.cmake"
     },
     {
-      "name": "documentation",
-      "displayName": "Documentation",
+      "name": "linux-documentation",
+      "inherits": [
+        "linux",
+        "release"
+      ],
+      "cacheVariables": {
+        "INEXOR_BUILD_DOCUMENTATION": "ON"
+      }
+    },
+    {
+      "name": "windows-documentation",
+      "inherits": [
+        "windows",
+        "release"
+      ],
       "cacheVariables": {
         "INEXOR_BUILD_DOCUMENTATION": "ON"
       }
