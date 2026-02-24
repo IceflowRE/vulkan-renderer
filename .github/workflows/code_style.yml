@@ -1,4 +1,4 @@
-name: Code Style Check
+name: Code Style
 
 on:
   workflow_call:

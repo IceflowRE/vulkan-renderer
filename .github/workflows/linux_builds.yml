@@ -83,7 +83,7 @@ jobs:
 
       - name: Prepare Artifacts
         run: |
-          BASE="${{ matrix.config.artifacts-id }}
+          BASE="${{ matrix.config.artifacts-id }}"
 
           # Core
           mkdir -p linux-core-$BASE

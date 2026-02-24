@@ -11,6 +11,10 @@ env:
   INEXOR_VULKAN_SDK_CHECKSUM_WINDOWS: "811fcb9b43d09248520b2f38ae9a3763fc81df950fdab874f23bd762b07a9b12"
 
 jobs:
+  code-style:
+    name: Code Style
+    uses: ./.github/workflows/code_style.yml
+
   linux-build:
     name: Linux
     uses: ./.github/workflows/linux_builds.yml
@@ -51,7 +55,3 @@ jobs:
       - documentation
       - static-analysis
     uses: ./.github/workflows/nightly_release.yml
-
-  code-style:
-    name: Code Style Check
-    uses: ./.github/workflows/code_style.yml
