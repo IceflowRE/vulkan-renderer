@@ -20,11 +20,11 @@ jobs:
         config:
           - name: "MSVC (Debug)"
             cmake-preset: "windows-msvc"
-            extra_cmake_args: "--config Debug"
+            extra-cmake-args: "--config Debug"
             artifacts-id: "msvc_debug"
           - name: "MSVC (Release)"
             cmake-preset: "windows-msvc"
-            extra_cmake_args: "--config Release"
+            extra-cmake-args: "--config Release"
             artifacts-id: "msvc_release"
           - name: "Clang (Debug)"
             cmake-preset: "windows-clang-debug"
@@ -55,16 +55,16 @@ jobs:
           cmake . --preset ${{ matrix.config.cmake-preset }} -Bbuild
 
       - name: Build Core
-        run: cmake --build build --target inexor-vulkan-renderer-core-lib --parallel ${{ matrix.config.extra_cmake_args }}
+        run: cmake --build build --target inexor-vulkan-renderer-core-lib --parallel ${{ matrix.config.extra-cmake-args }}
 
       - name: Build Example
-        run: cmake --build build --target inexor-vulkan-renderer-example --parallel ${{ matrix.config.extra_cmake_args }}
+        run: cmake --build build --target inexor-vulkan-renderer-example --parallel ${{ matrix.config.extra-cmake-args }}
 
       - name: Build Tests
-        run: cmake --build build --target inexor-vulkan-renderer-tests --parallel ${{ matrix.config.extra_cmake_args }}
+        run: cmake --build build --target inexor-vulkan-renderer-tests --parallel ${{ matrix.config.extra-cmake-args }}
 
       - name: Build Benchmarks
-        run: cmake --build build --target inexor-vulkan-renderer-benchmarks --parallel ${{ matrix.config.extra_cmake_args }}
+        run: cmake --build build --target inexor-vulkan-renderer-benchmarks --parallel ${{ matrix.config.extra-cmake-args }}
 
       - name: Run Tests
         working-directory: build
@@ -89,7 +89,7 @@ jobs:
       - name: Prepare Artifacts
         shell: pwsh
         run: |
-          $base = "${{ matrix.config.artifacts_id }}"
+          $base = "${{ matrix.config.artifacts-id }}"
 
           # Core
           mkdir "windows-core-$base"
