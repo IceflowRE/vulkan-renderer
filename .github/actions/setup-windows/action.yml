@@ -30,7 +30,10 @@ runs:
         if ((Get-FileHash vulkansdk.exe -Algorithm SHA256).Hash.ToLower() -ne "${{ inputs.vulkan-sdk-checksum }}") { Write-Error "Checksum mismatch!"; exit 1 }
         7z x -y vulkansdk.exe -o"${{ github.workspace }}/vulkan_sdk"
         Remove-Item vulkansdk.exe
-        # Permanently add Vulkan SDK to PATH
+    
+    - name: Set ENV and PATH for Vulkan SDK
+      shell: pwsh
+      run: |
         echo "${{ github.workspace }}/vulkan_sdk" >> $env:GITHUB_PATH
         echo "${{ github.workspace }}/vulkan_sdk\Bin" >> $env:GITHUB_PATH
         echo "VULKAN_SDK=${{ github.workspace }}/vulkan_sdk" >> $env:GITHUB_ENV

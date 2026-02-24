@@ -77,7 +77,10 @@ runs:
         echo "${{ inputs.vulkan-sdk-checksum }} vulkansdk.tar.xz" | sha256sum --check
         tar -xJf vulkansdk.tar.xz -C "${{ github.workspace }}/vulkan_sdk"
         rm vulkansdk.tar.xz
-        # set ENV and PATH for future steps
+
+    - name: Set ENV and PATH for Vulkan SDK
+      shell: bash
+      run: |
         VULKAN_SDK="${{ github.workspace }}/vulkan_sdk/${{ inputs.vulkan-sdk-version }}/x86_64"
         echo "VULKAN_SDK=$VULKAN_SDK" >> $GITHUB_ENV
         echo "LD_LIBRARY_PATH=$VULKAN_SDK/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" >> $GITHUB_ENV
