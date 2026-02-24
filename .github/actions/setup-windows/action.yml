@@ -27,7 +27,7 @@ runs:
       if: steps.cache-vulkan.outputs.cache-hit != 'true'
       run: |
         curl -LS -o vulkansdk.exe https://sdk.lunarg.com/sdk/download/${{ inputs.vulkan-sdk-version }}/windows/VulkanSDK-${{ inputs.vulkan-sdk-version }}-Installer.exe
-        if ((Get-FileHash vulkansdk.exe -Algorithm SHA256).Hash.ToLower() -ne ${{ inputs.vulkan-sdk-checksum }}) { Write-Error "Checksum mismatch!"; exit 1 }
+        if ((Get-FileHash vulkansdk.exe -Algorithm SHA256).Hash.ToLower() -ne "${{ inputs.vulkan-sdk-checksum }}") { Write-Error "Checksum mismatch!"; exit 1 }
         7z x -y vulkansdk.exe -o"${{ github.workspace }}/vulkan_sdk"
         Remove-Item vulkansdk.exe
         # Permanently add Vulkan SDK to PATH

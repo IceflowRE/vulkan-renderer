@@ -18,16 +18,16 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - name: "Ubuntu Clang (Debug)"
+          - name: "Clang (Debug)"
             cmake-preset: "linux-clang-debug"
             artifacts-id: "clang_debug"
-          - name: "Ubuntu Clang (Release)"
+          - name: "Clang (Release)"
             cmake-preset: "linux-clang-release"
             artifacts-id: "clang_release"
-          - name: "Ubuntu GCC (Debug)"
+          - name: "GCC (Debug)"
             cmake-preset: "linux-gcc-debug"
             artifacts-id: "gcc_debug"
-          - name: "Ubuntu GCC (Release)"
+          - name: "GCC (Release)"
             cmake-preset: "linux-gcc-release"
             artifacts-id: "gcc_release"
 

@@ -18,18 +18,18 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - name: "Windows MSVC (Debug)"
+          - name: "MSVC (Debug)"
             cmake-preset: "windows-msvc"
             extra_cmake_args: "--config Debug"
             artifacts-id: "msvc_debug"
-          - name: "Windows MSVC (Release)"
+          - name: "MSVC (Release)"
             cmake-preset: "windows-msvc"
             extra_cmake_args: "--config Release"
             artifacts-id: "msvc_release"
-          - name: "Windows Clang (Debug)"
+          - name: "Clang (Debug)"
             cmake-preset: "windows-clang-debug"
             artifacts-id: "clang_debug"
-          - name: "Windows Clang (Release)"
+          - name: "Clang (Release)"
             cmake-preset: "windows-clang-release"
             artifacts-id: "clang_release"
 
