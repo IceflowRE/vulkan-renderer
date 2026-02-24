@@ -62,13 +62,10 @@ jobs:
             | sort | uniq -c | sort -nr \
             | sed 's/[][]//g' || true
 
-      - name: Set Build Version
-        uses: ./.github/actions/set-build-version
-
       - name: Upload Artifacts
         uses: actions/upload-artifact@v6
         with:
-          name: static_analysis-clang_tidy-${{ env.BUILD_VERSION }}
+          name: static_analysis-clang_tidy
           path: static_analysis-clang_tidy.txt
           retention-days: 14
 
@@ -111,7 +108,7 @@ jobs:
       - name: Upload Artifacts
         uses: actions/upload-artifact@v6
         with:
-          name: static_analysis-scan_build-${{ env.BUILD_VERSION }}
+          name: static_analysis-scan_build
           path: |
             static_analysis-scan_build_report
             static_analysis-scan_build_summary.txt
@@ -173,13 +170,10 @@ jobs:
         run: |
           cat static_analysis-cppcheck_output.txt | sort | uniq -c | sort -nr || true
 
-      - name: Set Build Version
-        uses: ./.github/actions/set-build-version
-
       - name: Upload Artifacts
         uses: actions/upload-artifact@v6
         with:
-          name: static_analysis_cppcheck-${{ env.BUILD_VERSION }}
+          name: static_analysis_cppcheck
           path: static_analysis-cppcheck_output.txt
           retention-days: 14
 
@@ -232,12 +226,9 @@ jobs:
       - name: Analyse Benchmarks
         run: cmake --build build --target inexor-vulkan-renderer-benchmarks --config ${{ matrix.config.build_type }} >> msvc_analysis-${{ matrix.config.artifacts_id }}.txt 2>&1 || true
 
-      - name: Set Build Version
-        uses: ./.github/actions/set-build-version
-
       - name: Upload Artifacts
         uses: actions/upload-artifact@v6
         with:
-          name: static_analysis-msvc_analysis_${{ matrix.config.artifacts_id }}-${{ env.BUILD_VERSION}}
+          name: static_analysis-msvc_analysis-${{ matrix.config.artifacts_id }}
           path: msvc_analysis-${{ matrix.config.artifacts_id }}.txt
           retention-days: 14

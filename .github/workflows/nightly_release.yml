@@ -14,24 +14,24 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Download Core Builds
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v7
         with:
           path: archives/core
           pattern: '*-core-*'
           merge-multiple: false
 
       - name: Download Example Builds
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v7
         with:
           path: archives/example
           pattern: '*-example-*'
           merge-multiple: false
 
       - name: Download Documentation
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v7
         with:
           path: archives/docs
-          pattern: 'documentation-*'
+          pattern: 'documentation'
           merge-multiple: false
 
       - name: Create Git Tag

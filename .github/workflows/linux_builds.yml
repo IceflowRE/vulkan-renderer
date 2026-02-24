@@ -81,12 +81,9 @@ jobs:
             "$bench_exec" 2>&1 | tee "benchmark/$(basename "$bench_exec").txt"
           done
 
-      - name: Set Build Version
-        uses: ./.github/actions/set-build-version
-
       - name: Prepare Artifacts
         run: |
-          BASE="${{ matrix.config.artifacts-id }}-${{ env.BUILD_VERSION }}"
+          BASE="${{ matrix.config.artifacts-id }}
 
           # Core
           mkdir -p linux-core-$BASE
@@ -101,20 +98,31 @@ jobs:
           cp ./shaders/*.spv linux-example-$BASE/shaders/
 
           # Benchmarks, Tests
-          mkdir -p linux-benchmarks-tests-$BASE
-          find ./build -type f -executable -name '*-tests' -exec cp {} linux-benchmarks-tests-$BASE/ \;
-          find ./build -type f -name '*.xml' -exec cp {} linux-benchmarks-tests-$BASE/ \;
-          find ./build -type f -executable -name '*-benchmarks' -exec cp {} linux-benchmarks-tests-$BASE/ \;
-
+          mkdir -p linux-benchmarks_tests-$BASE
+          find ./build -type f -executable -name '*-tests' -exec cp {} linux-benchmarks_tests-$BASE/ \;
+          find ./build -type f -name '*.xml' -exec cp {} linux-benchmarks_tests-$BASE/ \;
+          find ./build -type f -executable -name '*-benchmarks' -exec cp {} linux-benchmarks_tests-$BASE/ \;
           if [ -d "./build/benchmark" ]; then
-            cp -r ./build/benchmark linux-benchmarks-tests-$BASE/
+            cp -r ./build/benchmark linux-benchmarks_tests-$BASE/
           fi
 
-      - name: Upload Artifacts
+      - name: Upload Core Artifact
         uses: actions/upload-artifact@v6
         with:
-          path: |
-            linux-core-${{ matrix.config.artifacts-id }}-${{ env.BUILD_VERSION }}
-            linux-example-${{ matrix.config.artifacts-id }}-${{ env.BUILD_VERSION }}
-            linux-benchmarks-tests-${{ matrix.config.artifacts-id }}-${{ env.BUILD_VERSION }}
+          name: linux-core-${{ matrix.config.artifacts-id }}
+          path: linux-core-${{ matrix.config.artifacts-id }}
+          retention-days: 14
+
+      - name: Upload Example Artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: linux-example-${{ matrix.config.artifacts-id }}
+          path: linux-example-${{ matrix.config.artifacts-id }}
+          retention-days: 14
+
+      - name: Upload Benchmarks Artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: linux-benchmarks_tests-${{ matrix.config.artifacts-id }}
+          path: linux-benchmarks_tests-${{ matrix.config.artifacts-id }}
           retention-days: 14

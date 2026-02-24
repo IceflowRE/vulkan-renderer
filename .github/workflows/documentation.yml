@@ -44,12 +44,9 @@ jobs:
         run: |
           cmake --build build --target inexor-vulkan-renderer-documentation-linkcheck || true
 
-      - name: Set Build Version
-        uses: ./.github/actions/set-build-version
-
       - name: Upload Artifacts
         uses: actions/upload-artifact@v6
         with:
-          name: documentation-${{ env.BUILD_VERSION }}
-          path: build/html
+          name: documentation
+          path: build/documentation/html
           retention-days: 14

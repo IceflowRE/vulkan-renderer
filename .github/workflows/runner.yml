@@ -50,4 +50,8 @@ jobs:
       - windows-build
       - documentation
       - static-analysis
-    uses: ./.github/workflows/nightly-release.yml
+    uses: ./.github/workflows/nightly_release.yml
+
+  code-style:
+    name: Code Style Check
+    uses: ./.github/workflows/code_style.yml
