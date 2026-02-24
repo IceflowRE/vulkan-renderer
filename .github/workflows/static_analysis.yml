@@ -20,7 +20,7 @@ jobs:
     env:
       INEXOR_CMAKE_PRESET: "linux-clang-debug"
     steps:
-      - name: Checkout code
+      - name: Checkout Code
         uses: actions/checkout@v6
 
       - name: Setup System
@@ -75,7 +75,7 @@ jobs:
     env:
       INEXOR_CMAKE_PRESET: "linux-clang-debug"
     steps:
-      - name: Checkout code
+      - name: Checkout Code
         uses: actions/checkout@v6
 
       - name: Setup System
@@ -120,7 +120,7 @@ jobs:
     env:
       INEXOR_CMAKE_PRESET: "linux-clang-debug"
     steps:
-      - name: Checkout code
+      - name: Checkout Code
         uses: actions/checkout@v6
 
       - name: Setup System
@@ -194,16 +194,16 @@ jobs:
             artifacts_id: "release"
 
     steps:
-      - name: Checkout Code
+      - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Setup System
+      - name: Setup system
         uses: ./.github/actions/setup-windows
         with:
           vulkan-sdk-version: ${{ inputs.vulkan-sdk-version }}
           vulkan-sdk-checksum: ${{ inputs.vulkan-sdk-checksum-windows }}
 
-      - name: Load CMake Cache
+      - name: Load CMake cache
         id: cache-cmake
         uses: ./.github/actions/cmake-cache
         with:
@@ -214,19 +214,19 @@ jobs:
         run: |
           cmake . --preset ${{ matrix.config.cmake_preset }} -Bbuild -DCMAKE_CXX_FLAGS=/analyze
 
-      - name: Analyse Core
+      - name: Analyse core
         run: cmake --build build --target inexor-vulkan-renderer-core-lib --config ${{ matrix.config.build_type }} > msvc_analysis-${{ matrix.config.artifacts_id }}.txt 2>&1 || true
       
-      - name: Analyse Example
+      - name: Analyse example
         run: cmake --build build --target inexor-vulkan-renderer-example --config ${{ matrix.config.build_type }} >> msvc_analysis-${{ matrix.config.artifacts_id }}.txt 2>&1 || true
       
-      - name: Analyse Tests
+      - name: Analyse tests
         run: cmake --build build --target inexor-vulkan-renderer-tests --config ${{ matrix.config.build_type }} >> msvc_analysis-${{ matrix.config.artifacts_id }}.txt 2>&1 || true
       
-      - name: Analyse Benchmarks
+      - name: Analyse benchmarks
         run: cmake --build build --target inexor-vulkan-renderer-benchmarks --config ${{ matrix.config.build_type }} >> msvc_analysis-${{ matrix.config.artifacts_id }}.txt 2>&1 || true
 
-      - name: Upload Artifacts
+      - name: Upload artifacts
         uses: actions/upload-artifact@v6
         with:
           name: static_analysis-msvc_analysis-${{ matrix.config.artifacts_id }}

@@ -32,16 +32,16 @@ jobs:
             artifacts-id: "gcc_release"
 
     steps:
-      - name: Checkout Code
+      - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Setup System
+      - name: Setup system
         uses: ./.github/actions/setup-linux
         with:
           vulkan-sdk-version: ${{ inputs.vulkan-sdk-version }}
           vulkan-sdk-checksum: ${{ inputs.vulkan-sdk-checksum }}
   
-      - name: Load CMake Cache
+      - name: Load CMake cache
         id: cache-cmake
         uses: ./.github/actions/cmake-cache
         with:
@@ -52,19 +52,19 @@ jobs:
         run: |
           cmake . --preset ${{ matrix.config.cmake-preset }} -Bbuild
 
-      - name: Build Core
+      - name: Build core
         run: cmake --build build --target inexor-vulkan-renderer-core-lib --parallel
 
-      - name: Build Example
+      - name: Build example
         run: cmake --build build --target inexor-vulkan-renderer-example --parallel
 
-      - name: Build Tests
+      - name: Build tests
         run: cmake --build build --target inexor-vulkan-renderer-tests --parallel
 
-      - name: Build Benchmarks
+      - name: Build benchmarks
         run: cmake --build build --target inexor-vulkan-renderer-benchmarks --parallel
 
-      - name: Run Tests
+      - name: Run tests
         working-directory: build
         run: |
           for test_exec in $(find . -type f -executable -name '*-tests'); do
@@ -72,7 +72,7 @@ jobs:
             $test_exec --gtest_output=xml:"$test_exec.xml"
           done
 
-      - name: Run Benchmarks
+      - name: Run benchmarks
         working-directory: build
         run: |
           mkdir -p benchmark
@@ -81,7 +81,7 @@ jobs:
             "$bench_exec" 2>&1 | tee "benchmark/$(basename "$bench_exec").txt"
           done
 
-      - name: Prepare Artifacts
+      - name: Prepare artifacts
         run: |
           BASE="${{ matrix.config.artifacts-id }}"
 
@@ -106,21 +106,21 @@ jobs:
             cp -r ./build/benchmark linux-benchmarks_tests-$BASE/
           fi
 
-      - name: Upload Core Artifact
+      - name: Upload core artifact
         uses: actions/upload-artifact@v6
         with:
           name: linux-core-${{ matrix.config.artifacts-id }}
           path: linux-core-${{ matrix.config.artifacts-id }}
           retention-days: 14
 
-      - name: Upload Example Artifact
+      - name: Upload example artifact
         uses: actions/upload-artifact@v6
         with:
           name: linux-example-${{ matrix.config.artifacts-id }}
           path: linux-example-${{ matrix.config.artifacts-id }}
           retention-days: 14
 
-      - name: Upload Benchmarks Artifact
+      - name: Upload benchmarks artifact
         uses: actions/upload-artifact@v6
         with:
           name: linux-benchmarks_tests-${{ matrix.config.artifacts-id }}

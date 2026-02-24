@@ -15,16 +15,16 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
+      - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Setup System
+      - name: Setup system
         uses: ./.github/actions/setup-linux
         with:
           vulkan-sdk-version: ${{ inputs.vulkan-sdk-version }}
           vulkan-sdk-checksum: ${{ inputs.vulkan-sdk-checksum }}
 
-      - name: Load CMake Cache
+      - name: Load CMake cache
         id: cache-cmake
         uses: ./.github/actions/cmake-cache
         with:
@@ -35,7 +35,7 @@ jobs:
         run: |
           cmake . --preset linux-documentation -Bbuild
 
-      - name: Build Documentation
+      - name: Build documentation
         run: |
           cmake --build build --target inexor-vulkan-renderer-documentation
 
@@ -44,7 +44,7 @@ jobs:
         run: |
           cmake --build build --target inexor-vulkan-renderer-documentation-linkcheck || true
 
-      - name: Upload Artifacts
+      - name: Upload artifacts
         uses: actions/upload-artifact@v6
         with:
           name: documentation

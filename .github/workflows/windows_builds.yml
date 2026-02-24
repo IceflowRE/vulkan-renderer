@@ -34,16 +34,16 @@ jobs:
             artifacts-id: "clang_release"
 
     steps:
-      - name: Checkout Code
+      - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Setup System
+      - name: Setup system
         uses: ./.github/actions/setup-windows
         with:
           vulkan-sdk-version: ${{ inputs.vulkan-sdk-version }}
           vulkan-sdk-checksum: ${{ inputs.vulkan-sdk-checksum }}
 
-      - name: Load CMake Cache
+      - name: Load CMake cache
         id: cache-cmake
         uses: ./.github/actions/cmake-cache
         with:
@@ -54,19 +54,19 @@ jobs:
         run: |
           cmake . --preset ${{ matrix.config.cmake-preset }} -Bbuild
 
-      - name: Build Core
+      - name: Build core
         run: cmake --build build --target inexor-vulkan-renderer-core-lib --parallel ${{ matrix.config.extra-cmake-args }}
 
-      - name: Build Example
+      - name: Build example
         run: cmake --build build --target inexor-vulkan-renderer-example --parallel ${{ matrix.config.extra-cmake-args }}
 
-      - name: Build Tests
+      - name: Build tests
         run: cmake --build build --target inexor-vulkan-renderer-tests --parallel ${{ matrix.config.extra-cmake-args }}
 
-      - name: Build Benchmarks
+      - name: Build benchmarks
         run: cmake --build build --target inexor-vulkan-renderer-benchmarks --parallel ${{ matrix.config.extra-cmake-args }}
 
-      - name: Run Tests
+      - name: Run tests
         working-directory: build
         run: |
           Get-ChildItem -Recurse -Filter '*-tests.exe' | ForEach-Object {
@@ -74,7 +74,7 @@ jobs:
             & $_.FullName --gtest_output=xml:"$($_.FullName).xml"
           }
 
-      - name: Run Benchmarks
+      - name: Run benchmarks
         working-directory: build
         run: |
           if (Test-Path benchmark) { Remove-Item benchmark -Recurse -Force }
@@ -86,7 +86,7 @@ jobs:
             & $benchPath 2>&1 | Tee-Object -FilePath $outputFile
           }
 
-      - name: Prepare Artifacts
+      - name: Prepare artifacts
         shell: pwsh
         run: |
           $base = "${{ matrix.config.artifacts-id }}"
@@ -106,35 +106,35 @@ jobs:
           Copy-Item -Path ./shaders/*.spv -Destination "windows-example-$base/shaders"
 
           # Benchmarks, Tests
-          mkdir "windows-benchmarks-tests-$base"
+          mkdir "windows-benchmarks_tests-$base"
           Get-ChildItem -Path ./build -Recurse -Filter "*-tests.exe" |
-            ForEach-Object { Copy-Item $_.FullName "windows-benchmarks-tests-$base" }
+            ForEach-Object { Copy-Item $_.FullName "windows-benchmarks_tests-$base" }
 
           Get-ChildItem -Path ./build -Recurse -Filter "*.xml" |
-            ForEach-Object { Copy-Item $_.FullName "windows-benchmarks-tests-$base" }
+            ForEach-Object { Copy-Item $_.FullName "windows-benchmarks_tests-$base" }
 
           Get-ChildItem -Path ./build -Recurse -Filter "*-benchmarks.exe" |
-            ForEach-Object { Copy-Item $_.FullName "windows-benchmarks-tests-$base" }
+            ForEach-Object { Copy-Item $_.FullName "windows-benchmarks_tests-$base" }
 
           if (Test-Path ./build/benchmark) {
-            Copy-Item -Path ./build/benchmark -Destination "windows-benchmarks-tests-$base" -Recurse
+            Copy-Item -Path ./build/benchmark -Destination "windows-benchmarks_tests-$base" -Recurse
           }
 
-      - name: Upload Core Artifact
+      - name: Upload core artifact
         uses: actions/upload-artifact@v6
         with:
           name: windows-core-${{ matrix.config.artifacts-id }}
           path: windows-core-${{ matrix.config.artifacts-id }}
           retention-days: 14
 
-      - name: Upload Example Artifact
+      - name: Upload example artifact
         uses: actions/upload-artifact@v6
         with:
           name: windows-example-${{ matrix.config.artifacts-id }}
           path: windows-example-${{ matrix.config.artifacts-id }}
           retention-days: 14
 
-      - name: Upload Benchmarks Artifact
+      - name: Upload benchmarks artifact
         uses: actions/upload-artifact@v6
         with:
           name: windows-benchmarks_tests-${{ matrix.config.artifacts-id }}
