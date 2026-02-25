@@ -15,26 +15,30 @@ jobs:
       - name: Download example builds
         uses: actions/download-artifact@v7
         with:
-          path: archives
           pattern: "*-example-*"
+          path: archives
 
       - name: Download documentation
         uses: actions/download-artifact@v7
         with:
+          name: "documentation"
           path: archives/documentation
-          pattern: "documentation"
 
       - name: Prepare archives for release
         working-directory: archives
         run: |
           for dir in *-example-*; do
             if [[ -d "$dir" ]]; then
-              zip -r "${dir}.zip" "$dir"
+              cd "$dir"
+              zip -r "../${dir}.zip" ./*
+              cd ..
             fi
           done
 
           if [[ -d documentation ]]; then
-            zip -r documentation.zip documentation
+            cd documentation
+            zip -r ../documentation.zip ./*
+            cd ..
           fi
 
       - name: Create git tag
