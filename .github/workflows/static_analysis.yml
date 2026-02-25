@@ -176,7 +176,7 @@ jobs:
 
   msvc-analysis:
     name: MSVC Analysis ${{ matrix.config.name }}
-    runs-on: windows-latest
+    runs-on: windows-2025-vs2026
     strategy:
       fail-fast: false
       matrix:

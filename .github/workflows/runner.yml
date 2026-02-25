@@ -42,11 +42,10 @@ jobs:
       vulkan-sdk-checksum-linux: "8005e2cf3e89c80cbe1c0d0a259c88248de3257b4fc6fdefb47409edb3e43ecb"
       vulkan-sdk-checksum-windows: "811fcb9b43d09248520b2f38ae9a3763fc81df950fdab874f23bd762b07a9b12"
 
-  nightly-release:
-    name: Nightly Release
+  release:
+    name: Release
     needs:
       - linux-build
       - windows-build
       - documentation
-      - static-analysis
-    uses: ./.github/workflows/nightly_release.yml
+    uses: ./.github/workflows/release.yml
