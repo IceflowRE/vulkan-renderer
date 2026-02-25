@@ -40,12 +40,12 @@ jobs:
         with:
           vulkan-sdk-version: ${{ inputs.vulkan-sdk-version }}
           vulkan-sdk-checksum: ${{ inputs.vulkan-sdk-checksum }}
-  
+
       - name: Load CMake cache
         id: cache-cmake
         uses: ./.github/actions/cmake-cache
         with:
-          key: ${{ matrix.config.cmake_preset }}
+          key: ${{ matrix.config.cmake-preset }}
 
       - name: Configure CMake
         if: steps.cache-cmake.outputs.cache-hit != 'true'

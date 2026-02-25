@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.24)
 project(inexor-vulkan-renderer-core-lib CXX)
 
-# Stop in source builds
 set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
 
 # Options

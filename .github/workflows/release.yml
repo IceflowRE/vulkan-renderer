@@ -15,21 +15,21 @@ jobs:
       - name: Download core builds
         uses: actions/download-artifact@v7
         with:
-          path: archives/core
+          path: archives
           pattern: '*-core-*'
           merge-multiple: false
 
       - name: Download example builds
         uses: actions/download-artifact@v7
         with:
-          path: archives/example
+          path: archives
           pattern: '*-example-*'
           merge-multiple: false
 
       - name: Download documentation
         uses: actions/download-artifact@v7
         with:
-          path: archives/docs
+          path: archives
           pattern: 'documentation'
           merge-multiple: false
 

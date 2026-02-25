@@ -182,11 +182,11 @@ jobs:
       matrix:
         config:
           - name: "Debug"
-            cmake_preset: "windows-msvc"
+            cmake-preset: "windows-msvc"
             build_type: "Debug"
             artifacts_id: "debug"
           - name: "Release"
-            cmake_preset: "windows-msvc"
+            cmake-preset: "windows-msvc"
             build_type: "Release"
             artifacts_id: "release"
 
@@ -204,22 +204,22 @@ jobs:
         id: cache-cmake
         uses: ./.github/actions/cmake-cache
         with:
-          key: ${{ matrix.config.cmake_preset }}_analyze
+          key: ${{ matrix.config.cmake-preset }}_analyze
 
       - name: Configure CMake
         if: steps.cache-cmake.outputs.cache-hit != 'true'
         run: |
-          cmake . --preset ${{ matrix.config.cmake_preset }} -Bbuild -DCMAKE_CXX_FLAGS=/analyze
+          cmake . --preset ${{ matrix.config.cmake-preset }} -Bbuild -DCMAKE_CXX_FLAGS=/analyze
 
       - name: Analyse core
         run: cmake --build build --target inexor-vulkan-renderer-core-lib --config ${{ matrix.config.build_type }} > msvc_analysis-${{ matrix.config.artifacts_id }}.txt 2>&1 || true
-      
+
       - name: Analyse example
         run: cmake --build build --target inexor-vulkan-renderer-example --config ${{ matrix.config.build_type }} >> msvc_analysis-${{ matrix.config.artifacts_id }}.txt 2>&1 || true
-      
+
       - name: Analyse tests
         run: cmake --build build --target inexor-vulkan-renderer-tests --config ${{ matrix.config.build_type }} >> msvc_analysis-${{ matrix.config.artifacts_id }}.txt 2>&1 || true
-      
+
       - name: Analyse benchmarks
         run: cmake --build build --target inexor-vulkan-renderer-benchmarks --config ${{ matrix.config.build_type }} >> msvc_analysis-${{ matrix.config.artifacts_id }}.txt 2>&1 || true
 
