@@ -61,7 +61,7 @@ jobs:
         run: cmake --build build --target inexor-vulkan-renderer-example --parallel ${{ matrix.config.extra-cmake-args }}
 
       - name: Install example
-        run: cmake --install build --component example --prefix install-example
+        run: cmake --install build --component example --prefix install-example ${{ matrix.config.extra-cmake-args }}
 
       - name: Build tests
         run: cmake --build build --target inexor-vulkan-renderer-tests --parallel ${{ matrix.config.extra-cmake-args }}
