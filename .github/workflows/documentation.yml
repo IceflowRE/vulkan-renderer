@@ -28,12 +28,12 @@ jobs:
         id: cache-cmake
         uses: ./.github/actions/cmake-cache
         with:
-          key: linux-documentation
+          key: documentation
 
       - name: Configure CMake
         if: steps.cache-cmake.outputs.cache-hit != 'true'
         run: |
-          cmake . --preset linux-documentation -Bbuild
+          cmake . --preset documentation -Bbuild
 
       - name: Build documentation
         run: |

@@ -5,7 +5,7 @@ on: [workflow_call, workflow_dispatch]
 jobs:
   nightly-release:
     name: Nightly
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == "refs/heads/main"
     runs-on: ubuntu-latest
 
     steps:
@@ -16,22 +16,22 @@ jobs:
         uses: actions/download-artifact@v7
         with:
           path: archives
-          pattern: '*-core-*'
-          merge-multiple: false
+          pattern: "*-core-*"
+          merge-multiple: true
 
       - name: Download example builds
         uses: actions/download-artifact@v7
         with:
           path: archives
-          pattern: '*-example-*'
-          merge-multiple: false
+          pattern: "*-example-*"
+          merge-multiple: true
 
       - name: Download documentation
         uses: actions/download-artifact@v7
         with:
-          path: archives
-          pattern: 'documentation'
-          merge-multiple: false
+          path: archives/documentation
+          pattern: "documentation"
+          merge-multiple: true
 
       - name: Create git tag
         run: |
@@ -39,6 +39,16 @@ jobs:
           git config user.email "github-actions@github.com"
           git tag nightly
           git push -f origin tag nightly
+
+      - name: Prepare archives for release
+        run: |
+          ls -la archives
+          find archives/ -type f -print0 | xargs -0 mv -t archives
+
+      # wait 5s that the pushed tag is available in the next step, sometimes the next step saw only the local tag
+      - name: Wait 5s
+        run: sleep 5s
+        shell: bash
 
       - name: Create or update nightly release
         env:
@@ -48,7 +58,7 @@ jobs:
         run: |
           output=$(gh release delete nightly -y 2>&1) || [[ "${output}" == "release not found" ]]
           gh release create nightly \
-            ./archives/*.zip \
+            ./archives/* \
             --title "Nightly Release" \
             --notes "${{ env.NOTES }}" \
             --prerelease \
