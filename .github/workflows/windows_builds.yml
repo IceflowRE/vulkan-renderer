@@ -60,6 +60,9 @@ jobs:
       - name: Build example
         run: cmake --build build --target inexor-vulkan-renderer-example --parallel ${{ matrix.config.extra-cmake-args }}
 
+      - name: Install example
+        run: cmake --install build --component example --prefix install-example
+
       - name: Build tests
         run: cmake --build build --target inexor-vulkan-renderer-tests --parallel ${{ matrix.config.extra-cmake-args }}
 
@@ -96,15 +99,6 @@ jobs:
           Get-ChildItem -Path ./build -Recurse -Filter "inexor-vulkan-renderer-core-lib*" |
             ForEach-Object { Copy-Item $_.FullName "windows-core-$base" }
 
-          # Example
-          mkdir "windows-example-$base"
-          Get-ChildItem -Path ./build -Recurse -Filter "inexor-vulkan-renderer-example.exe" |
-            ForEach-Object { Copy-Item $_.FullName "windows-example-$base" }
-
-          Copy-Item -Path ./assets/. -Destination "windows-example-$base" -Recurse
-          mkdir "windows-example-$base/shaders"
-          Copy-Item -Path ./shaders/*.spv -Destination "windows-example-$base/shaders"
-
           # Benchmarks, Tests
           mkdir "windows-benchmarks_tests-$base"
           Get-ChildItem -Path ./build -Recurse -Filter "*-tests.exe" |
@@ -131,7 +125,7 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: windows-example-${{ matrix.config.artifacts-id }}
-          path: windows-example-${{ matrix.config.artifacts-id }}
+          path: install-example/bin
           retention-days: 14
 
       - name: Upload benchmarks artifact

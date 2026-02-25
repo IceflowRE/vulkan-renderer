@@ -57,6 +57,9 @@ jobs:
 
       - name: Build example
         run: cmake --build build --target inexor-vulkan-renderer-example --parallel
+      
+      - name: Install example
+        run: cmake --install build --component example --prefix install-example
 
       - name: Build tests
         run: cmake --build build --target inexor-vulkan-renderer-tests --parallel
@@ -89,14 +92,6 @@ jobs:
           mkdir -p linux-core-$BASE
           find ./build -type f -name 'libinexor-vulkan-renderer-core-lib*' -exec cp {} linux-core-$BASE/ \;
 
-          # Example
-          mkdir -p linux-example-$BASE
-          find ./build -type f -name 'inexor-vulkan-renderer-example' -exec cp {} linux-example-$BASE/ \;
-
-          cp -r ./assets linux-example-$BASE/
-          mkdir -p linux-example-$BASE/shaders
-          cp ./shaders/*.spv linux-example-$BASE/shaders/
-
           # Benchmarks, Tests
           mkdir -p linux-benchmarks_tests-$BASE
           find ./build -type f -executable -name '*-tests' -exec cp {} linux-benchmarks_tests-$BASE/ \;
@@ -117,7 +112,7 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: linux-example-${{ matrix.config.artifacts-id }}
-          path: linux-example-${{ matrix.config.artifacts-id }}
+          path: install-example/bin
           retention-days: 14
 
       - name: Upload benchmarks artifact

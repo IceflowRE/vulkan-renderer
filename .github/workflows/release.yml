@@ -12,26 +12,30 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Download core builds
-        uses: actions/download-artifact@v7
-        with:
-          path: archives
-          pattern: "*-core-*"
-          merge-multiple: true
-
       - name: Download example builds
         uses: actions/download-artifact@v7
         with:
           path: archives
           pattern: "*-example-*"
-          merge-multiple: true
 
       - name: Download documentation
         uses: actions/download-artifact@v7
         with:
           path: archives/documentation
           pattern: "documentation"
-          merge-multiple: true
+
+      - name: Prepare archives for release
+        working-directory: archives
+        run: |
+          for dir in *-example-*; do
+            if [[ -d "$dir" ]]; then
+              zip -r "${dir}.zip" "$dir"
+            fi
+          done
+
+          if [[ -d documentation ]]; then
+            zip -r documentation.zip documentation
+          fi
 
       - name: Create git tag
         run: |
@@ -39,11 +43,6 @@ jobs:
           git config user.email "github-actions@github.com"
           git tag nightly
           git push -f origin tag nightly
-
-      - name: Prepare archives for release
-        run: |
-          ls -la archives
-          find archives/ -type f -print0 | xargs -0 mv -t archives
 
       # wait 5s that the pushed tag is available in the next step, sometimes the next step saw only the local tag
       - name: Wait 5s
@@ -58,7 +57,7 @@ jobs:
         run: |
           output=$(gh release delete nightly -y 2>&1) || [[ "${output}" == "release not found" ]]
           gh release create nightly \
-            ./archives/* \
+            ./archives/*.zip \
             --title "Nightly Release" \
             --notes "${{ env.NOTES }}" \
             --prerelease \
