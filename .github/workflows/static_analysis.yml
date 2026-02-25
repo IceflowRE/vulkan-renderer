@@ -102,9 +102,6 @@ jobs:
             -o static_analysis-scan_build_report \
             cmake --build build -- -j$(nproc) 2>&1 | tee static_analysis-scan_build_summary.txt
 
-      - name: Set Build Version
-        uses: ./.github/actions/set-build-version
-
       - name: Upload Artifacts
         uses: actions/upload-artifact@v6
         with:
